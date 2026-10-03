@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: mandate-api
+    env: python
+    buildCommand: "uv pip install --system -e . && uv run alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mandate-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+
+databases:
+  - name: mandate-db
+    databaseName: mandate
+    user: mandate

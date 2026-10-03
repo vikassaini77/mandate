@@ -1,0 +1,37 @@
+# Roadmap
+
+- [x] Build the MANDATE dashboard and navigation
+- [x] Add mandate creation and deterministic policy simulation
+- [x] Add approval, blocking, activity, and analytics interactions
+- [x] Add responsive styling, motion, and app metadata
+- [x] Verify desktop and mobile core flows
+- [x] Apply the bio-mechanical living vault design system
+- [x] Add a skippable, session-only cinematic policy-gate intro
+- [x] Add and verify the adaptive transaction-flow background
+- [x] Build the public landing page and animated verdict story
+- [x] Add secure sign in, sign up, Google, and password recovery
+- [x] Add saved three-step onboarding and protect the control room
+- [x] Verify public, account, onboarding, and dashboard flows
+- [x] Expand dashboard with KPIs, charts, live activity, and confirmed agent kill switch
+- [x] Add account-synced threaded Agent Chat with streaming, attachments, voice, and exports
+- [x] Add live Mandate Builder parsing, editing, simulation, versions, and rollback
+- [x] Upgrade Approvals Center with expiry, limit changes, payment approval, and live updates
+- [ ] Verify every protected workspace flow on desktop and mobile
+- [x] Add searchable, filterable, virtualized Audit Log with timeline/table views and CSV/JSON export
+- [x] Add interactive Red-Team Lab attack simulations with deterministic policy-defense results and scoreboard
+- [ ] Verify Audit Log and Red-Team Lab on desktop and mobile
+- [x] Add PayPal Sandbox transactions, detail drawer, and guarded refunds
+- [x] Add spend analytics and blocked-attempt heatmap
+- [x] Add complete tabbed workspace settings and profile management
+- [x] Add Agent Chat configuration drawer
+- [x] Add branded not-found, error, loading, and actionable empty states
+- [ ] Verify new workspace surfaces on desktop and mobile
+- [x] Define mock data contracts and seed 12 products, 40+ audit events, and 6 attack scenarios
+- [x] Complete WCAG AA audit and remediate critical/warning findings
+- [x] Polish mobile approvals and touch targets across workspace controls
+- [x] Reduce initial bundle cost with lazy feature loading and stable media dimensions
+- [x] Standardize async announcements, loading, error, empty, and optimistic interaction states
+- [x] Verify typecheck, lint, tests, runtime console, and responsive layouts
+- [x] Document local setup, environment variables, scripts, and architecture
+- [x] Document the component map and animation tuning locations
+- [x] Expose seeded operational data through a typed mock API client

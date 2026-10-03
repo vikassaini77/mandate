@@ -1,0 +1,251 @@
+openapi: 3.1.0
+info:
+  title: MANDATE API
+  version: 1.0.0
+  description: Backend API for the MANDATE shopping agent policy engine.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+paths:
+  /api/activity:
+    get:
+      summary: Get recent activity
+      responses:
+        '200':
+          description: A list of activity records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+  /api/audit-events:
+    get:
+      summary: Get audit records
+      responses:
+        '200':
+          description: A list of audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditRecord'
+  /api/products:
+    get:
+      summary: Get products
+      responses:
+        '200':
+          description: A list of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+  /api/purchase-proposals:
+    get:
+      summary: Get purchase proposals
+      responses:
+        '200':
+          description: A list of purchase proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PurchaseProposal'
+  /api/red-team-scenarios:
+    get:
+      summary: Get red team scenarios
+      responses:
+        '200':
+          description: A list of red team scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RedTeamScenario'
+  /api/spend-series:
+    get:
+      summary: Get spend data series
+      responses:
+        '200':
+          description: A list of daily spend records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SpendData'
+components:
+  schemas:
+    Verdict:
+      type: string
+      enum: [APPROVE, ESCALATE, BLOCK]
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+        merchant:
+          type: string
+        item:
+          type: string
+        amount:
+          type: number
+        decision:
+          type: string
+        time:
+          type: string
+        rule:
+          type: string
+      required: [id, merchant, item, amount, decision, time, rule]
+    AuditRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+        type:
+          type: string
+          enum: [purchase.proposed, policy.evaluated, payment.authorized, purchase.blocked]
+        summary:
+          type: string
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        ruleId:
+          type: string
+        reasoning:
+          type: string
+        toolCalls:
+          type: array
+          items:
+            type: string
+        occurredAt:
+          type: string
+        displayTime:
+          type: string
+        merchant:
+          type: string
+        item:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        decision:
+          type: string
+          enum: [approved, review, blocked]
+        rule:
+          type: string
+        ruleCode:
+          type: string
+        paypalOrderId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - timestamp
+        - type
+        - summary
+        - verdict
+        - ruleId
+        - reasoning
+        - toolCalls
+        - occurredAt
+        - displayTime
+        - merchant
+        - item
+        - category
+        - amount
+        - decision
+        - rule
+        - ruleCode
+        - paypalOrderId
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        image:
+          type: string
+        price:
+          type: number
+        merchant:
+          type: string
+        category:
+          type: string
+        rating:
+          type: number
+      required: [id, name, image, price, merchant, category, rating]
+    PurchaseProposal:
+      type: object
+      properties:
+        id:
+          type: string
+        product:
+          $ref: '#/components/schemas/Product'
+        merchant:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        agentReasoning:
+          type: string
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        ruleTriggered:
+          type: string
+        status:
+          type: string
+          enum: [proposed, pending, authorized, blocked, denied]
+        paypalOrderId:
+          type: string
+      required:
+        - id
+        - product
+        - merchant
+        - price
+        - category
+        - agentReasoning
+        - verdict
+        - ruleTriggered
+        - status
+    RedTeamScenario:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        severity:
+          type: string
+        source:
+          type: string
+        payload:
+          type: string
+        attempt:
+          type: string
+        rule:
+          type: string
+        result:
+          type: string
+      required: [id, name, type, severity, source, payload, attempt, rule, result]
+    SpendData:
+      type: object
+      properties:
+        day:
+          type: string
+        approved:
+          type: number
+        blocked:
+          type: number
+      required: [day, approved, blocked]
