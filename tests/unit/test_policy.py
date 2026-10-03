@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 from hypothesis import given, strategies as st
 from copy import deepcopy
 
-from app.domain.verdict import Verdict, Decision
-from app.domain.mandate import MandateState, RuleConfig
-from app.domain.proposal import ProposalState
-from app.domain.spend_state import SpendState
-from app.policy.engine import evaluate
+from packages.database.verdict import Verdict, Decision
+from packages.database.mandate import MandateState, RuleConfig
+from packages.database.proposal import ProposalState
+from packages.database.spend_state import SpendState
+from apps.api.src.services.policy.engine import evaluate
 
 # Strategies for generating random but valid test data
 st_amounts = st.integers(min_value=1, max_value=1_000_000)

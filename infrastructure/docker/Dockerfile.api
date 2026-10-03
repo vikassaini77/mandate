@@ -14,13 +14,15 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml .
+COPY apps/api/pyproject.toml apps/api/pyproject.toml
 
 # Install dependencies (system-wide for docker)
+# Because it relies on the actual project files for `-e .`, it's better to just copy everything first.
+COPY . .
+WORKDIR /app/apps/api
 RUN uv pip install --system -e .
 
-# Copy application code
-COPY . .
+WORKDIR /app
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -30,4 +32,4 @@ EXPOSE 8000
 
 # The command is provided in docker-compose or render.yaml, 
 # but providing a default one here
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "apps.api.src.main:app", "--host", "0.0.0.0", "--port", "8000"]

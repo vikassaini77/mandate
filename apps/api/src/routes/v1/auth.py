@@ -5,13 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, timezone
 
-from app.core.security import (
+from apps.api.src.config.security import (
     get_password_hash, verify_password, create_access_token, create_refresh_token,
     decode_token, generate_totp_secret, verify_totp
 )
-from app.db.models import User, Session
+from packages.database.db.models import User, Session
 # In a real app we'd import get_db from deps, assuming it's available
-# from app.deps import get_db
+# from apps.api.src.deps import get_db
 # For skeleton, we'll mock the dependency injection signature
 async def get_db():
     yield None

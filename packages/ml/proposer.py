@@ -8,7 +8,7 @@ import faiss
 import numpy as np
 
 # We import the policy engine models
-from app.policy.engine import Product
+from apps.api.src.services.policy.engine import Product
 
 class LLMRequest(BaseModel):
     prompt: str

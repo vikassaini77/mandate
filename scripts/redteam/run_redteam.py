@@ -6,7 +6,7 @@ import sys
 # Add backend to path for absolute imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.redteam.scenarios import SCENARIOS
+from scripts.redteam.lab.scenarios import SCENARIOS
 
 def run_scenarios():
     print("Running Red-Team Lab Scenarios...")

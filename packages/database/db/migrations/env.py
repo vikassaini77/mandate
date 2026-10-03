@@ -12,7 +12,7 @@ import sys
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
-from app.db.models import Base
+from packages.database.db.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,9 +1,9 @@
 from anthropic import AsyncAnthropic
 import json
 import asyncio
-from app.agent.tools import search_products, compare_products, propose_purchase
-from app.domain.mandate import MandateState
-from app.domain.spend_state import SpendState
+from packages.ai.tools import search_products, compare_products, propose_purchase
+from packages.database.mandate import MandateState
+from packages.database.spend_state import SpendState
 
 class AgentOrchestrator:
     def __init__(self, client: AsyncAnthropic, mandate: MandateState, spend_state: SpendState):

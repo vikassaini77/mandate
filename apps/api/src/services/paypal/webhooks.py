@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Any
-from app.paypal.client import paypal_client
-from app.paypal.errors import PayPalWebhookVerificationError
+from apps.api.src.services.paypal.client import paypal_client
+from apps.api.src.services.paypal.errors import PayPalWebhookVerificationError
 
 async def verify_webhook_signature(
     transmission_id: str,

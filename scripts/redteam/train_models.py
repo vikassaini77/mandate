@@ -4,9 +4,9 @@ import logging
 import pandas as pd
 import numpy as np
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
-from app.ml.injection_classifier import InjectionClassifier
-from app.ml.anomaly_detector import AnomalyDetector
-from app.ml.recommender import TwoTowerRecommender
+from packages.ml.injection_classifier import InjectionClassifier
+from packages.ml.anomaly_detector import AnomalyDetector
+from packages.ml.recommender import TwoTowerRecommender
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

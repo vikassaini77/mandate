@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.api
     ports:
       - "8000:8000"
     environment:
@@ -18,9 +20,9 @@ services:
         condition: service_started
     command: >
       bash -c "
-      uv run alembic upgrade head &&
-      uv run python scripts/seed.py &&
-      uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      uv run alembic -c packages/database/alembic.ini upgrade head &&
+      uv run python scripts/redteam/seed.py &&
+      uv run uvicorn apps.api.src.main:app --host 0.0.0.0 --port 8000 --reload
       "
 
   db:

@@ -3,7 +3,7 @@ import json
 import logging
 import pandas as pd
 from sklearn.metrics import confusion_matrix
-from app.ml.manager import MLManager
+from packages.ml.manager import MLManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

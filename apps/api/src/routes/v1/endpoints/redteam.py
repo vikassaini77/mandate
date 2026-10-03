@@ -15,7 +15,7 @@ async def get_results(skip: int = 0, limit: int = 100): pass
 async def get_scoreboard(): pass
 
 from fastapi.responses import StreamingResponse
-from app.services.security_monitor import SecurityMonitor
+from apps.api.src.services.security_monitor import SecurityMonitor
 import json
 
 @router.get('/security-stream')

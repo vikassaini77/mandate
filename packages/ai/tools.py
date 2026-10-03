@@ -1,9 +1,9 @@
 from typing import List, Dict, Any
-from app.domain.verdict import Verdict, Decision
-from app.domain.proposal import ProposalState
-from app.domain.mandate import MandateState
-from app.domain.spend_state import SpendState
-from app.policy.engine import evaluate
+from packages.database.verdict import Verdict, Decision
+from packages.database.proposal import ProposalState
+from packages.database.mandate import MandateState
+from packages.database.spend_state import SpendState
+from apps.api.src.services.policy.engine import evaluate
 from datetime import datetime, timezone
 
 # Dummy catalog for testing/mocking

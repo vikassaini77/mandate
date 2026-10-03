@@ -2,7 +2,7 @@ import json
 from anthropic import AsyncAnthropic
 from pydantic import ValidationError
 from typing import Union
-from app.parser.schema import ParsedMandate
+from packages.ai.parser.schema import ParsedMandate
 
 class MandateParser:
     def __init__(self, client: AsyncAnthropic, model: str = "claude-3-haiku-20240307"):

@@ -1,7 +1,7 @@
 import uuid
 from typing import Dict, Any
-from app.paypal.client import paypal_client
-from app.paypal.errors import PayPalOrderError
+from apps.api.src.services.paypal.client import paypal_client
+from apps.api.src.services.paypal.errors import PayPalOrderError
 
 async def create_order(amount_cents: int, currency: str, reference_id: str, idempotency_key: str = None) -> Dict[str, Any]:
     """

@@ -5,7 +5,7 @@ import logging
 import asyncio
 import httpx
 from typing import Dict, Any, Optional
-from app.paypal.errors import PayPalAuthenticationError, PayPalAPIError
+from apps.api.src.services.paypal.errors import PayPalAuthenticationError, PayPalAPIError
 
 logger = logging.getLogger(__name__)
 

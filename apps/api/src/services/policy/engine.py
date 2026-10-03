@@ -1,8 +1,8 @@
 from datetime import datetime
-from app.domain.verdict import Decision, Verdict
-from app.domain.mandate import MandateState
-from app.domain.proposal import ProposalState
-from app.domain.spend_state import SpendState
+from packages.database.verdict import Decision, Verdict
+from packages.database.mandate import MandateState
+from packages.database.proposal import ProposalState
+from packages.database.spend_state import SpendState
 
 def is_within_time_window(time_windows: list[str], now: datetime) -> bool:
     """

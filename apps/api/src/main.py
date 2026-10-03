@@ -8,8 +8,8 @@ from scripts.seed import (
     redTeamScenarios, 
     spendData
 )
-from app.ml.manager import MLManager
-from app.api.v1.router import api_router
+from packages.ml.manager import MLManager
+from apps.api.src.routes.v1.router import api_router
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="MANDATE API", description="Backend API for the MANDATE shopping agent policy engine.")
