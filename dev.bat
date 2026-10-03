@@ -5,7 +5,7 @@ echo ===================================================
 
 echo.
 echo [1/2] Starting FastAPI Backend...
-start "MANDATE BACKEND" cmd /k "uv run uvicorn apps.api.src.main:app --host 0.0.0.0 --port 8000 --reload"
+start "MANDATE BACKEND" cmd /k "apps\api\.venv\Scripts\uvicorn.exe apps.api.src.main:app --host 0.0.0.0 --port 8000 --reload"
 
 echo.
 echo [2/2] Starting React Frontend...
