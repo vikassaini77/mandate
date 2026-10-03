@@ -256,6 +256,53 @@ export function RedTeamLab() {
           </div>
         </section>
       </div>
+      <LiveThreatStream />
+    </div>
+  );
+}
+
+import { useEffect } from "react";
+
+function LiveThreatStream() {
+  const [threats, setThreats] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Only connect if we are not using mocks
+    if (import.meta.env.VITE_USE_MOCKS === "true") return;
+
+    const eventSource = new EventSource(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/redteam/security-stream`);
+    
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setThreats((prev) => [data, ...prev].slice(0, 5)); // keep last 5
+    };
+
+    return () => eventSource.close();
+  }, []);
+
+  if (threats.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-danger/40 bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Siren className="size-4 text-danger animate-pulse" />
+        <h2 className="text-sm font-semibold text-danger">Live Threat Map</h2>
+      </div>
+      <div className="space-y-2">
+        <AnimatePresence>
+          {threats.map((threat, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center justify-between text-xs bg-danger-soft border border-danger/20 p-2 rounded"
+            >
+              <span className="font-mono">{threat.type || "PROMPT_INJECTION"}</span>
+              <span className="text-muted-foreground">{new Date().toLocaleTimeString()}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

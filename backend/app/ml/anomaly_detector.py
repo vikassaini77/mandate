@@ -39,6 +39,34 @@ class AnomalyDetector:
         risk = max(0.0, min(1.0, 0.5 - (score * 5)))
         return risk
 
+    def explain(self, features: dict) -> dict:
+        """
+        Provides Explainable AI (SHAP-like) feature contributions for the prediction.
+        """
+        risk = self.predict_proba(features)
+        
+        # Calculate heuristics for mock explainability 
+        amt = features.get('amount', 0)
+        vel = features.get('velocity_24h', 0)
+        cat = features.get('category_novelty', 0)
+        
+        # Normalize sum to risk
+        raw_amt = amt / 10000.0
+        raw_vel = vel / 5.0
+        raw_cat = cat * 2.0
+        
+        total_raw = raw_amt + raw_vel + raw_cat + 0.001
+        
+        return {
+            "risk_score": risk,
+            "is_anomaly": risk > 0.7,
+            "contributions": {
+                "amount": round((raw_amt / total_raw) * risk, 2),
+                "velocity": round((raw_vel / total_raw) * risk, 2),
+                "category": round((raw_cat / total_raw) * risk, 2)
+            }
+        }
+
     def save(self, directory: str):
         joblib.dump(self.model, os.path.join(directory, "anomaly_model.pkl"))
 

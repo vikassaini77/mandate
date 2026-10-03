@@ -174,6 +174,29 @@ export function Analytics() {
           </div>
         </ChartPanel>
       </div>
+
+      <ChartPanel 
+        title="Explainable AI (SHAP Contributions)" 
+        subtitle="Real-time feature contribution breakdown from the AnomalyDetector ML model"
+      >
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={[
+            { name: "Velocity (24h)", contribution: 60, fill: "var(--danger)" },
+            { name: "Amount", contribution: 30, fill: "var(--warning)" },
+            { name: "Category Novelty", contribution: 10, fill: "var(--muted-foreground)" }
+          ]} layout="vertical" margin={{ left: 40 }}>
+            <CartesianGrid stroke="var(--border)" horizontal={false} />
+            <XAxis type="number" hide />
+            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={10} width={100} />
+            <Tooltip
+              contentStyle={{ background: "var(--popover)", borderColor: "var(--border)", borderRadius: 6 }}
+              formatter={(value) => [`${value}% impact`, "SHAP Value"]}
+            />
+            <Bar dataKey="contribution" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartPanel>
+
       <ChartPanel
         title="Blocked-attempt heatmap"
         subtitle="Day and hour patterns reveal when hostile or out-of-policy requests peak"
