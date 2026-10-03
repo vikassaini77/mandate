@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from scripts.seed import (
+from scripts.redteam.seed import (
     activity, 
     auditRecords, 
     products, 
