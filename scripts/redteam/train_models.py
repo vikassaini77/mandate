@@ -11,7 +11,7 @@ from packages.ml.recommender import TwoTowerRecommender
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ARTIFACTS_DIR = os.path.join(os.path.dirname(__file__), "../app/ml/artifacts")
+ARTIFACTS_DIR = os.path.join(os.path.dirname(__file__), "../../packages/ml/artifacts")
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 def generate_injection_data():
