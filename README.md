@@ -162,6 +162,23 @@ The repository includes a dedicated Red-Team Lab (`scripts/redteam/run_redteam.p
 
 ---
 
+## 🔄 CI/CD Pipeline
+
+```mermaid
+graph LR
+    Code[Commit to Main] --> Lint[Ruff & Mypy]
+    Lint --> Test[Pytest & Hypothesis]
+    Test --> RedTeam[Red-Team Lab Suite]
+    RedTeam --> Build[Docker Build]
+    Build --> Deploy[Deploy to Render/AWS]
+    
+    style RedTeam fill:#f9f,stroke:#333,stroke-width:4px
+```
+
+Our GitHub Actions pipeline explicitly gates deployments behind the `make redteam` command. If an LLM logic update allows an adversarial prompt injection to slip through to the PayPal execution layer, the pipeline forcibly halts.
+
+---
+
 ## 🚢 Deployment
 
 MANDATE is container-native and deploys seamlessly to cloud providers.
