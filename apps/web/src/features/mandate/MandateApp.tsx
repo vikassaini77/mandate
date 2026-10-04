@@ -120,6 +120,7 @@ import { ChatSettingsDrawer } from "./ChatSettingsDrawer";
 import { ScreenSkeleton } from "./WorkspaceStates";
 import { featuredProposal } from "./mock";
 import { VerdictBadge } from "./VerdictBadge";
+import { BiometricModal } from "./BiometricModal";
 
 const AuditLog = lazy(() => import("./AuditLog").then((module) => ({ default: module.AuditLog })));
 const RedTeamLab = lazy(() =>
@@ -434,14 +435,6 @@ export function MandateApp({
             >
               <Bell />
               <span className="absolute right-2 top-2 size-1.5 rounded-full bg-warning" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDark((value) => !value)}
-              aria-label="Toggle theme"
-            >
-              {dark ? <Sun /> : <Moon />}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1399,6 +1392,7 @@ function Approvals() {
   const requests = useMandateStore((state) => state.requests);
   const resolve = useMandateStore((state) => state.resolveRequest);
   const [selected, setSelected] = useState<string | null>(null);
+  const [verifyingRequest, setVerifyingRequest] = useState<{ id: string, action: "approve" | "sign" } | null>(null);
   const [limit, setLimit] = useState(200);
   const [celebrate, setCelebrate] = useState(false);
   const [announcement, setAnnouncement] = useState("Approval queue ready");
@@ -1493,13 +1487,9 @@ function Approvals() {
                   onClick={() => {
                     const currentSigs = signatures[request.id] || 1;
                     if (currentSigs < 2) {
-                      setSignatures((prev) => ({ ...prev, [request.id]: currentSigs + 1 }));
-                      toast("Signature added", {
-                        description: "Waiting for remaining quorum members.",
-                        icon: <Users className="size-4 text-paypal" />
-                      });
+                      setVerifyingRequest({ id: request.id, action: "sign" });
                     } else {
-                      decide(request.id, "approved");
+                      setVerifyingRequest({ id: request.id, action: "approve" });
                     }
                   }}
                 >
@@ -1519,7 +1509,7 @@ function Approvals() {
                 <Button
                   variant="paypal"
                   className="min-h-11 sm:col-span-1"
-                  onClick={() => decide(request.id, "approved")}
+                  onClick={() => setVerifyingRequest({ id: request.id, action: "approve" })}
                 >
                   <Check />
                   Approve & pay
@@ -1570,6 +1560,25 @@ function Approvals() {
           </DialogContent>
         )}
       </Dialog>
+      <BiometricModal
+        open={verifyingRequest !== null}
+        onOpenChange={(open) => !open && setVerifyingRequest(null)}
+        actionText={verifyingRequest?.action === "sign" ? "APPLY SIGNATURE" : "AUTHORIZE"}
+        onVerified={() => {
+          if (!verifyingRequest) return;
+          if (verifyingRequest.action === "sign") {
+            const currentSigs = signatures[verifyingRequest.id] || 1;
+            setSignatures((prev) => ({ ...prev, [verifyingRequest.id]: currentSigs + 1 }));
+            toast("Signature added", {
+              description: "Waiting for remaining quorum members.",
+              icon: <Users className="size-4 text-paypal" />
+            });
+          } else {
+            decide(verifyingRequest.id, "approved");
+          }
+          setVerifyingRequest(null);
+        }}
+      />
       <AnimatePresence>
         {celebrate && (
           <motion.div

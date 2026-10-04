@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   ArrowDownLeft,
   CheckCircle2,
@@ -46,6 +47,7 @@ type Payment = {
   mandate: string;
   verdict: string;
   refunded: number;
+  employee: string;
 };
 const seed: Payment[] = [
   {
@@ -58,6 +60,7 @@ const seed: Payment[] = [
     mandate: "Developer tools up to $500/month",
     verdict: "APPROVE · MND-SW-104",
     refunded: 0,
+    employee: "Jane Doe",
   },
   {
     id: "8NY11402CH260701V",
@@ -69,6 +72,7 @@ const seed: Payment[] = [
     mandate: "Electronics under $150",
     verdict: "APPROVE · MND-LIM-012",
     refunded: 0,
+    employee: "John Smith",
   },
   {
     id: "3BR77561FJ908442P",
@@ -80,6 +84,7 @@ const seed: Payment[] = [
     mandate: "Developer tools up to $500/month",
     verdict: "ESCALATE · MND-BIL-009",
     refunded: 0,
+    employee: "Jane Doe",
   },
   {
     id: "7WA03925HL511420N",
@@ -91,6 +96,7 @@ const seed: Payment[] = [
     mandate: "Design tools",
     verdict: "APPROVE · MND-SW-104",
     refunded: 64,
+    employee: "Sarah Connor",
   },
   {
     id: "1GU21847XL903155S",
@@ -102,6 +108,7 @@ const seed: Payment[] = [
     mandate: "Office essentials",
     verdict: "BLOCK · MND-CAT-003",
     refunded: 0,
+    employee: "John Smith",
   },
 ];
 
@@ -112,6 +119,8 @@ export function Transactions() {
   const [selected, setSelected] = useState<Payment | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
+  const [revealed, setRevealed] = useState(false);
+
   const rows = useMemo(
     () =>
       payments.filter(
@@ -196,6 +205,24 @@ export function Transactions() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full sm:w-auto font-mono text-xs uppercase tracking-widest transition-colors",
+            revealed ? "border-safe text-safe hover:bg-safe/10" : "border-warning text-warning hover:bg-warning/10"
+          )}
+          onClick={() => {
+            if (!revealed) {
+              toast.success("Identity Verified", {
+                description: "Decrypted PII temporarily exposed.",
+                icon: <CheckCircle2 className="size-4 text-safe" />
+              });
+            }
+            setRevealed(!revealed);
+          }}
+        >
+          {revealed ? "HIDE PII" : "REVEAL PII"}
+        </Button>
       </div>
       {rows.length === 0 ? (
         <ActionEmpty
@@ -213,6 +240,7 @@ export function Transactions() {
             <thead className="border-b border-border bg-subtle font-mono text-[9px] uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Merchant</th>
+                <th className="px-4 py-3">Employee</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">PayPal order</th>
                 <th className="px-4 py-3">Date</th>
@@ -227,10 +255,15 @@ export function Transactions() {
                     <p className="text-sm font-medium">{row.merchant}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{row.item}</p>
                   </td>
+                  <td className="px-4 font-mono text-[10px]">
+                    {revealed ? row.employee : `${row.employee.split(" ")[0]} S****`}
+                  </td>
                   <td className="px-4">
                     <PaymentChip value={row.status} />
                   </td>
-                  <td className="px-4 font-mono text-[10px]">{row.id}</td>
+                  <td className="px-4 font-mono text-[10px]">
+                    {revealed ? row.id : `****-****-${row.id.slice(-4)}`}
+                  </td>
                   <td className="px-4 text-xs text-muted-foreground">{row.date}</td>
                   <td className="px-4 text-right font-mono text-sm">${row.amount.toFixed(2)}</td>
                   <td>

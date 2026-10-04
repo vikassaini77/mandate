@@ -257,29 +257,81 @@ export function Analytics() {
         </div>
       </ChartPanel>
       <ChartPanel
-        title="Decision throughput"
-        subtitle="Approved, escalated, and blocked requests by month"
+        title="Global Threat Vectors"
+        subtitle="Live geographic anomalies and originating attack IPs"
       >
-        <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={trends}>
-            <CartesianGrid stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={10} />
-            <YAxis tickLine={false} axisLine={false} fontSize={10} />
-            <Tooltip
-              contentStyle={{
-                background: "var(--popover)",
-                borderColor: "var(--border)",
-                borderRadius: 0,
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                textTransform: "uppercase",
-              }}
-              itemStyle={{ color: "var(--foreground)" }}
-              labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
-            />
-            <Bar dataKey="spend" fill="var(--safe)" radius={[0, 0, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="relative w-full overflow-hidden bg-[#050505] border border-[#2A2A2A] h-[250px] font-mono">
+          {/* Animated sweeping radar line */}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,0,0,0.1)_50%,transparent_100%)] animate-[pulse_4s_ease-in-out_infinite]" />
+          
+          <svg className="absolute inset-0 h-full w-full opacity-30" viewBox="0 0 1000 400" preserveAspectRatio="none">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2A2A2A" strokeWidth="1"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            
+            {/* Equator and Prime Meridian */}
+            <line x1="0" y1="200" x2="1000" y2="200" stroke="#FF0000" strokeWidth="1" strokeDasharray="5,5" opacity="0.5" />
+            <line x1="500" y1="0" x2="500" y2="400" stroke="#FF0000" strokeWidth="1" strokeDasharray="5,5" opacity="0.5" />
+          </svg>
+
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 400" preserveAspectRatio="none">
+            {/* Hardcoded Threat Nodes */}
+            {[
+              { id: 'tokyo', cx: 850, cy: 120, label: 'TYO', risk: 'high' },
+              { id: 'moscow', cx: 620, cy: 90, label: 'MOW', risk: 'critical' },
+              { id: 'london', cx: 480, cy: 130, label: 'LHR', risk: 'medium' },
+              { id: 'newyork', cx: 250, cy: 140, label: 'NYC', risk: 'high' },
+              { id: 'saopaulo', cx: 320, cy: 280, label: 'GRU', risk: 'low' },
+              { id: 'singapore', cx: 780, cy: 240, label: 'SIN', risk: 'critical' },
+            ].map(node => (
+              <g key={node.id}>
+                {/* Connecting trajectories to center (NYC - HQ) */}
+                <path 
+                  d={`M ${node.cx} ${node.cy} Q ${(node.cx + 250)/2} ${Math.min(node.cy, 140) - 50} 250 140`} 
+                  fill="none" 
+                  stroke={node.risk === 'critical' ? '#FF0000' : '#FFFF00'} 
+                  strokeWidth="1" 
+                  strokeDasharray="4,4" 
+                  opacity="0.3"
+                  className="animate-pulse"
+                />
+                
+                {/* Threat Node */}
+                <circle 
+                  cx={node.cx} 
+                  cy={node.cy} 
+                  r={node.risk === 'critical' ? 6 : node.risk === 'high' ? 4 : 2} 
+                  fill={node.risk === 'critical' ? '#FF0000' : node.risk === 'high' ? '#FFFF00' : '#00FF00'} 
+                />
+                
+                {/* Radar Ping Animation */}
+                <circle 
+                  cx={node.cx} 
+                  cy={node.cy} 
+                  r="20" 
+                  fill="none"
+                  stroke={node.risk === 'critical' ? '#FF0000' : '#FFFF00'}
+                  strokeWidth="1"
+                  className="animate-ping opacity-75"
+                />
+                
+                {/* Node Label */}
+                <text x={node.cx + 10} y={node.cy + 4} fill="#EAEAEA" fontSize="10" className="tracking-widest">
+                  {node.label}
+                </text>
+              </g>
+            ))}
+          </svg>
+          
+          <div className="absolute bottom-3 left-3 bg-[#121212] border border-[#2A2A2A] p-2 text-[9px] uppercase">
+            <div className="flex items-center gap-2 text-[#FF0000]"><span className="size-1.5 bg-[#FF0000] rounded-full animate-pulse" /> Critical Anomaly</div>
+            <div className="flex items-center gap-2 mt-1 text-[#FFFF00]"><span className="size-1.5 bg-[#FFFF00] rounded-full" /> Elevated Risk</div>
+            <div className="flex items-center gap-2 mt-1 text-[#00FF00]"><span className="size-1.5 bg-[#00FF00] rounded-full" /> Monitored Node</div>
+          </div>
+        </div>
       </ChartPanel>
     </div>
   );

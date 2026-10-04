@@ -139,112 +139,83 @@ export function RedTeamLab() {
               {phase === "blocked" ? "CONTAINED" : phase === "attacking" ? "EVALUATING" : "ARMED"}
             </span>
           </div>
-          <div className="grid min-h-[470px] lg:grid-cols-2">
-            <AttackPane side="Agent attempt" icon={Bot} danger>
-              <div className="rounded-md border border-danger/20 bg-danger-soft p-4">
-                <p className="font-mono text-[9px] uppercase text-danger">
-                  Untrusted input · {selected.source}
-                </p>
-                <p className="mt-3 font-mono text-xs leading-6">“{selected.payload}”</p>
-              </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${selected.id}-${phase}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-5"
-                >
-                  <p className="font-mono text-[9px] uppercase text-muted-foreground">
-                    What the agent was tricked into attempting
+          <div className="flex h-[470px] flex-col bg-[#050505] p-6 font-mono text-[11px] text-[#EAEAEA] sm:text-xs">
+            <div className="mb-4 flex items-center justify-between border-b border-[#2A2A2A] pb-2 text-muted-foreground">
+              <span>root@mandate-node-04:~/adversarial-lab</span>
+              <span className="flex items-center gap-2">
+                <span className="size-2 bg-[#FF0000]" />
+                <span className="size-2 bg-[#FFFF00]" />
+                <span className="size-2 bg-[#00FF00]" />
+              </span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto whitespace-pre-wrap">
+              {phase === "idle" && (
+                <div className="text-muted-foreground">
+                  <p>System initialized. Awaiting adversarial payload injection.</p>
+                  <p className="mt-2 text-[#00FF00]">root@mandate-node-04:~/adversarial-lab$ <span className="animate-pulse">_</span></p>
+                </div>
+              )}
+              
+              {phase !== "idle" && (
+                <div className="space-y-3">
+                  <p className="text-[#00FF00]">
+                    root@mandate-node-04:~/adversarial-lab$ ./inject --payload "{selected.payload}"
                   </p>
-                  <p className="mt-3 text-sm leading-6">
-                    {phase === "idle"
-                      ? "Run the scenario to expose the agent's attempted action."
-                      : selected.attempt}
-                  </p>
+                  
+                  <div className="text-muted-foreground">
+                    <p>[SYS] Executing payload injection...</p>
+                    <p>[SYS] Tricking agent into attempting: {selected.attempt}</p>
+                  </div>
+                  
                   {phase === "attacking" && (
-                    <div className="mt-5 space-y-2">
-                      {[80, 62, 73].map((width) => (
-                        <motion.div
-                          key={width}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${width}%` }}
-                          className="h-2 bg-danger-soft"
-                        />
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </AttackPane>
-            <AttackPane side="Policy engine" icon={ShieldCheck}>
-              <div className="relative flex h-full min-h-[330px] flex-col justify-center">
-                <div className="absolute left-0 top-0 h-full w-px bg-safe/30" />
-                <AnimatePresence mode="wait">
-                  {phase === "idle" ? (
                     <motion.div
-                      key="ready"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="text-center"
+                      className="space-y-1 text-[#FFFF00]"
                     >
-                      <LockKeyhole className="mx-auto size-9 text-muted-foreground" />
-                      <p className="mt-4 text-sm font-medium">Gate standing by</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        No action can execute before evaluation.
-                      </p>
-                    </motion.div>
-                  ) : phase === "attacking" ? (
-                    <motion.div
-                      key="scan"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="space-y-4 pl-6"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="size-2 animate-pulse rounded-full bg-warning" />
-                        <span className="font-mono text-xs">Parsing proposed action</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="size-2 animate-pulse rounded-full bg-warning [animation-delay:180ms]" />
-                        <span className="font-mono text-xs">Checking mandate graph</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="size-2 animate-pulse rounded-full bg-warning [animation-delay:360ms]" />
-                        <span className="font-mono text-xs">Locking payment rail</span>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="blocked"
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="pl-6"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-11 place-items-center rounded-full bg-safe-soft">
-                          <ShieldCheck className="size-6 text-safe" />
-                        </span>
-                        <div>
-                          <p className="font-mono text-2xl text-safe">BLOCK</p>
-                          <p className="text-xs text-muted-foreground">Payment never initiated</p>
-                        </div>
-                      </div>
-                      <div className="mt-6 border-l-2 border-safe pl-4">
-                        <p className="font-mono text-[9px] uppercase text-muted-foreground">
-                          Binding rule
-                        </p>
-                        <p className="mt-2 text-sm font-semibold leading-6">{selected.rule}</p>
-                      </div>
-                      <div className="mt-5 grid grid-cols-2 gap-2">
-                        <LabFact label="Tool calls stopped" value="4" />
-                        <LabFact label="Funds exposed" value="$0.00" />
-                      </div>
+                      <p>➜ Parsing proposed action...</p>
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+                        ➜ Checking mandate graph...
+                      </motion.p>
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+                        ➜ Locking payment rail...
+                      </motion.p>
+                      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1 }}>
+                        ➜ EVALUATING... <span className="animate-pulse">█</span>
+                      </motion.p>
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </div>
-            </AttackPane>
+                  
+                  {phase === "blocked" && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-3"
+                    >
+                      <div className="text-[#FFFF00]">
+                        <p>➜ Parsing proposed action... [OK]</p>
+                        <p>➜ Checking mandate graph... [OK]</p>
+                        <p>➜ Locking payment rail... [OK]</p>
+                      </div>
+                      
+                      <div className="border-l-2 border-[#FF0000] bg-[#FF0000]/10 p-3 text-[#FF0000]">
+                        <p className="font-bold tracking-widest">[ SECURITY OVERRIDE: BLOCK ]</p>
+                        <p className="mt-2">Payment never initiated. Binding rule triggered:</p>
+                        <p className="mt-1 opacity-80">{selected.rule}</p>
+                      </div>
+                      
+                      <div className="flex gap-8 text-muted-foreground">
+                        <p>Tool calls stopped: <span className="text-[#EAEAEA]">4</span></p>
+                        <p>Funds exposed: <span className="text-[#EAEAEA]">$0.00</span></p>
+                      </div>
+                      
+                      <p className="mt-4 text-[#00FF00]">root@mandate-node-04:~/adversarial-lab$ <span className="animate-pulse">_</span></p>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 border-t border-border bg-subtle px-5 py-3 text-[10px] text-muted-foreground">
             <AlertTriangle className="size-3.5 text-warning" />
