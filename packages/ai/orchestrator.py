@@ -127,17 +127,37 @@ class AgentOrchestrator:
                         "content": [{"type": "tool_result", "tool_use_id": tool.id, "content": decision.model_dump_json()}]
                     })
                 elif tool.name == "search_handbook":
-                    # Mock RAG response
-                    result = {"citation": "Page 14, Section 3B: Software purchases under $500 do not require VP approval if justified by engineering needs."}
+                    # Simple in-memory RAG implementation
+                    query = tool.input.get("query", "").lower()
+                    chunks = [
+                        "Page 14, Section 3B: Software purchases under $500 do not require VP approval if justified by engineering needs.",
+                        "Page 22, Section 4A: Hardware purchases must be made through approved vendors only.",
+                        "Page 45, Section 9C: Subscriptions over $1000/month require CFO sign-off."
+                    ]
+                    # Naive retrieval (BM25/Embedding simulation for hackathon)
+                    best_match = max(chunks, key=lambda c: sum(1 for word in query.split() if word in c.lower())) if query else chunks[0]
+                    result = {"citation": best_match, "source": "Corporate Procurement Handbook v2.1"}
+                    
                     yield f"data: {json.dumps({'type': 'tool_result', 'name': tool.name, 'result': result})}\n\n"
                     messages.append({
                         "role": "user",
                         "content": [{"type": "tool_result", "tool_use_id": tool.id, "content": json.dumps(result)}]
                     })
                 elif tool.name == "delegate_task":
-                    # Mock Swarm delegation
+                    # True Swarm Multi-Agent logic
                     agent_type = tool.input.get("agent_type")
-                    result = {"status": "success", "agent_reply": f"The {agent_type} agent has completed the research and found a 20% discount code: PAYPAL20."}
+                    instructions = tool.input.get("instructions")
+                    
+                    # Spawn a sub-agent with its own system prompt
+                    sub_agent_sys = f"You are an expert {agent_type}. Execute the task to the best of your ability. Keep it concise."
+                    sub_response = await self.client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=256,
+                        system=sub_agent_sys,
+                        messages=[{"role": "user", "content": instructions}]
+                    )
+                    
+                    result = {"status": "success", "agent_reply": sub_response.content[0].text}
                     yield f"data: {json.dumps({'type': 'tool_result', 'name': tool.name, 'result': result})}\n\n"
                     messages.append({
                         "role": "user",
