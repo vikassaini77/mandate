@@ -1,8 +1,10 @@
 from datetime import datetime
+import asyncio
 from packages.database.verdict import Decision, Verdict
 from packages.database.mandate import MandateState
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
+from apps.api.src.services.security_monitor import SecurityMonitor
 
 def is_within_time_window(time_windows: list[str], now: datetime) -> bool:
     """
@@ -22,7 +24,7 @@ def is_within_time_window(time_windows: list[str], now: datetime) -> bool:
             
     return False
 
-def evaluate(
+def _evaluate_rules(
     mandate: MandateState, 
     proposal: ProposalState, 
     spend_state: SpendState, 
@@ -140,3 +142,34 @@ def evaluate(
         rule_id="RULE-10-APPROVE",
         reason=f"Approved: Proposal of {proposal.amount/100:.2f} from {proposal.merchant} passes all checks."
     )
+
+def evaluate(
+    mandate: MandateState, 
+    proposal: ProposalState, 
+    spend_state: SpendState, 
+    now: datetime
+) -> Decision:
+    """
+    Evaluates the proposal and fires WebSocket events to the frontend Security Monitor
+    if a BLOCK or ESCALATE occurs.
+    """
+    decision = _evaluate_rules(mandate, proposal, spend_state, now)
+    
+    if decision.verdict in [Verdict.BLOCK, Verdict.ESCALATE]:
+        payload = {
+            "type": "threat_detected",
+            "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,
+            "rule_id": decision.rule_id,
+            "reason": decision.reason,
+            "merchant": proposal.merchant,
+            "amount": proposal.amount,
+            "timestamp": now.isoformat()
+        }
+        monitor = SecurityMonitor.get_instance()
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(monitor.emit_threat(payload))
+        except RuntimeError:
+            pass # Ignore if there is no running event loop
+            
+    return decision

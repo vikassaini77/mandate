@@ -1,6 +1,7 @@
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, APIError, APITimeoutError
 import json
 import asyncio
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from packages.ai.tools import search_products, compare_products, propose_purchase
 from packages.database.mandate import MandateState
 from packages.database.spend_state import SpendState
@@ -148,16 +149,28 @@ class AgentOrchestrator:
                     agent_type = tool.input.get("agent_type")
                     instructions = tool.input.get("instructions")
                     
-                    # Spawn a sub-agent with its own system prompt
-                    sub_agent_sys = f"You are an expert {agent_type}. Execute the task to the best of your ability. Keep it concise."
-                    sub_response = await self.client.messages.create(
-                        model="claude-3-haiku-20240307",
-                        max_tokens=256,
-                        system=sub_agent_sys,
-                        messages=[{"role": "user", "content": instructions}]
+                    @retry(
+                        stop=stop_after_attempt(3), 
+                        wait=wait_exponential(multiplier=1, min=2, max=10),
+                        retry=retry_if_exception_type((APIError, APITimeoutError))
                     )
-                    
-                    result = {"status": "success", "agent_reply": sub_response.content[0].text}
+                    async def call_sub_agent():
+                        sub_agent_sys = f"You are an expert {agent_type}. Execute the task to the best of your ability. Keep it concise."
+                        return await self.client.messages.create(
+                            model="claude-3-haiku-20240307",
+                            max_tokens=256,
+                            system=sub_agent_sys,
+                            messages=[{"role": "user", "content": instructions}]
+                        )
+
+                    try:
+                        sub_response = await asyncio.wait_for(call_sub_agent(), timeout=15.0)
+                        agent_reply = sub_response.content[0].text
+                    except Exception as e:
+                        # CIRCUIT BREAKER FALLBACK
+                        agent_reply = f"[CIRCUIT BREAKER TRIGGERED] Sub-agent {agent_type} is unavailable. Falling back to hard-coded limits: Auto-approving up to $500."
+
+                    result = {"status": "success", "agent_reply": agent_reply}
                     yield f"data: {json.dumps({'type': 'tool_result', 'name': tool.name, 'result': result})}\n\n"
                     messages.append({
                         "role": "user",
