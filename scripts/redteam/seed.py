@@ -128,6 +128,31 @@ for index in range(240):
         "paypalOrderId": paypalOrderId,
     }
     auditRecords.append(record)
+    
+    # Inject an explicit PayPal Webhook arrival for approved transactions
+    if decision == "approved" and index % 2 == 0:
+        webhook_time = occurredAt_dt + datetime.timedelta(seconds=12)
+        webhook_record = {
+            "id": f"evt_wh_{str(84210 - index).zfill(6)}",
+            "timestamp": webhook_time.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "occurredAt": webhook_time.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "type": "paypal.webhook.PAYMENT.CAPTURE.COMPLETED",
+            "summary": f"PayPal Webhook: Order {paypalOrderId} Captured",
+            "verdict": "APPROVE",
+            "ruleId": "PAYPAL-WEBHOOK",
+            "displayTime": displayTime,
+            "merchant": "PayPal Sandbox (Webhook)",
+            "item": f"Webhook Capture Confirmed",
+            "category": "System",
+            "amount": amount,
+            "decision": "approved",
+            "rule": "Webhook Signature Verified",
+            "ruleCode": "PAYPAL-WEBHOOK",
+            "reasoning": "Received verified PAYMENT.CAPTURE.COMPLETED webhook from PayPal Sandbox infrastructure.",
+            "toolCalls": ["paypal.verify_signature", "paypal.update_order_status"],
+            "paypalOrderId": paypalOrderId,
+        }
+        auditRecords.append(webhook_record)
 
 redTeamScenarios = [
     {
