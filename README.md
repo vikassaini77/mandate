@@ -41,10 +41,10 @@ The LLM is strictly downgraded to a "Proposer". It can browse catalogs, negotiat
 
 ### 🌟 5 Advanced Enterprise Features (Hackathon Highlights)
 1. **Explainable AI (XAI) ML Anomaly Detector:** Uses IsolationForest and SHAP-value visualization to transparently score the risk of every transaction.
-2. **Real-Time Threat Map:** WebSockets/SSE stream live adversarial attacks and blocked prompt injections directly to a Red-Team dashboard.
+2. **Real-Time Threat Map (Simulated Red-Team Traffic):** WebSockets/SSE stream live adversarial attacks and blocked prompt injections directly to a Red-Team dashboard, demonstrating how the engine handles CI/CD attack vectors.
 3. **Slack Human-in-the-Loop (HITL):** Instantly escalates high-risk or out-of-policy purchases to management via Slack webhooks.
 4. **Retrieval-Augmented Generation (RAG):** AI agents dynamically query the Corporate Employee Handbook using FAISS to justify purchases based on HR policy.
-5. **Multi-Agent Swarm Logic:** Specialized autonomous agents securely delegate tasks among themselves within defined tool-calling boundaries.
+5. **Multi-Agent Swarm Logic (Advisory Only):** Specialized autonomous agents securely delegate tasks among themselves, but all final financial decisions are strictly evaluated by the Deterministic Policy Engine.
 
 ### 💻 Enterprise Interface
 
