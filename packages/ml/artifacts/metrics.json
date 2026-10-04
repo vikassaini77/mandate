@@ -1,0 +1,18 @@
+{
+  "injection_classifier": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "roc_auc": 1.0,
+    "note": "Metrics based on SYNTHETIC dataset. Do not use as real-world performance proof."
+  },
+  "anomaly_detector": {
+    "contamination_setting": 0.05,
+    "note": "Metrics based on SYNTHETIC dataset. Anomalies generated artificially."
+  },
+  "recommender": {
+    "index_size": 3,
+    "dimension": 384,
+    "note": "Synthetic catalog data."
+  }
+}

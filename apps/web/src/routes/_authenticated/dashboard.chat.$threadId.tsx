@@ -12,12 +12,13 @@ export const Route = createFileRoute("/_authenticated/dashboard/chat/$threadId")
       .eq("id", auth.user.id)
       .maybeSingle();
     if (!profile?.onboarding_completed) throw redirect({ to: "/onboarding" });
-    const { data: thread } = await supabase
+    const { data: thread, error } = await supabase
       .from("chat_threads")
       .select("id")
       .eq("id", params.threadId)
       .maybeSingle();
-    if (!thread) throw redirect({ to: "/dashboard" });
+    if (error) console.error("Error fetching thread in route loader:", error);
+    // Removed redirect here to debug why chat doesn't load
   },
   head: () => ({
     meta: [

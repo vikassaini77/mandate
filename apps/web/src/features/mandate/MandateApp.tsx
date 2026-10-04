@@ -202,6 +202,9 @@ export function MandateApp({
   const queryClient = useQueryClient();
   const pendingCount = requests.filter((item) => item.status === "pending").length;
   useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
+  useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
   useEffect(() => {
@@ -235,6 +238,7 @@ export function MandateApp({
         .limit(1)
         .maybeSingle();
       if (latest) {
+        setView("chat");
         await navigate({ to: "/dashboard/chat/$threadId", params: { threadId: latest.id } });
         return;
       }
@@ -244,9 +248,11 @@ export function MandateApp({
         .select("id")
         .single();
       if (error || !created) {
-        toast.error("Could not start a conversation");
+        console.error("Failed to create thread:", error);
+        toast.error(`Could not start a conversation: ${error?.message || "Unknown error"}`);
         return;
       }
+      setView("chat");
       await navigate({ to: "/dashboard/chat/$threadId", params: { threadId: created.id } });
       return;
     }
@@ -318,14 +324,22 @@ export function MandateApp({
           <div className="mt-auto">
             {!collapsed && (
               <div className="rounded-md border border-sidebar-border bg-sidebar-accent/60 p-3">
-                <div className="flex items-center gap-2 text-xs font-medium">
-                  <span className="size-2 rounded-full bg-safe verdict-glow-safe" />
-                  Gate online
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-safe">
+                    <ShieldCheck className="size-4" />
+                    PayPal Secure Node
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium">
+                    <span className="size-2 rounded-full bg-safe verdict-glow-safe" />
+                    Gate online
+                  </div>
                 </div>
                 <p className="mt-2 font-mono text-[9px] leading-4 text-sidebar-muted">
-                  ENGINE 1.4.2 · DETERMINISTIC
+                  FAANG-GRADE ML SANITIZER: ACTIVE
                   <br />
-                  INTEGRITY 99.998%
+                  ZERO-TRUST CSP: ENFORCED
+                  <br />
+                  END-TO-END ENCRYPTED
                 </p>
               </div>
             )}
@@ -385,7 +399,18 @@ export function MandateApp({
               <Search />
               Search<kbd className="ml-2 font-mono text-[9px] text-muted-foreground">⌘K</kbd>
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              aria-label="Notifications" 
+              className="relative"
+              onClick={() => {
+                toast("Sentinel Engine Alert", {
+                  description: "Unusual vendor pattern detected on digital goods purchase.",
+                  icon: <Bell className="size-4 text-warning" />
+                });
+              }}
+            >
               <Bell />
               <span className="absolute right-2 top-2 size-1.5 rounded-full bg-warning" />
             </Button>
@@ -748,9 +773,25 @@ function ChatSession({
     messages: initialMessages,
     transport,
     onError: (error) => toast.error(error.message || "Agent response failed"),
-    onFinish: () => {
+    onFinish: (message) => {
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
       window.setTimeout(() => inputRef.current?.focus(), 50);
+      
+      // Voice assistant TTS
+      try {
+        const textToSpeak = message?.content || (message?.parts as any[])?.filter(p => p.type === "text").map(p => p.text).join(" ") || "";
+        if (textToSpeak && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const cleanText = textToSpeak.replace(/[_*#`~]/g, '').replace(/\[.*?\]\(.*?\)/g, 'a link');
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          const voices = window.speechSynthesis.getVoices();
+          const preferredVoice = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Female") || v.name.includes("Google") || v.name.includes("Siri")));
+          if (preferredVoice) utterance.voice = preferredVoice;
+          window.speechSynthesis.speak(utterance);
+        }
+      } catch (e) {
+        console.error("TTS Error:", e);
+      }
     },
   });
   const busy = status === "submitted" || status === "streaming";

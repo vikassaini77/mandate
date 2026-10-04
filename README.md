@@ -2,6 +2,8 @@
   
   # MANDATE
   
+  ![Mandate Secure FinTech AI Engine](./assets/mandate-hero.jpg)
+
   ### *The Deterministic Trust & Spending-Control Layer for AI Agents*
   
   MANDATE bridges the gap between autonomous AI capabilities and strict corporate financial compliance. It is an infrastructure layer that strictly isolates LLM intent generation from financial execution, ensuring that an AI can never independently authorize capital without passing through a mathematically rigorous, deterministic policy engine.
