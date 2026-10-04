@@ -75,6 +75,16 @@ export const useMandateStore = create<MandateState>((set) => ({
       status: "pending",
       confidence: 87,
     },
+    {
+      id: "req-3",
+      merchant: "Dell Technologies",
+      item: "PowerEdge R750 Rack Server",
+      amount: 8500,
+      time: "32 min ago",
+      reason: "High-value purchase exceeds $5,000 threshold. Quorum required.",
+      status: "pending",
+      confidence: 60,
+    },
   ],
   addMandate: (text, limit) =>
     set((state) => ({

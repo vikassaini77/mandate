@@ -133,37 +133,51 @@ export function AuthPage() {
 
   return (
     <main className="grid min-h-dvh bg-background lg:grid-cols-[1.05fr_.95fr]">
-      <section className="relative hidden overflow-hidden border-r border-border bg-ink p-10 text-ink-foreground lg:flex lg:flex-col">
-        <div className="intro-grid absolute inset-0" />
-        <div className="relative">
+      <section className="relative hidden overflow-hidden border-r border-[#2A2A2A] bg-[#050505] text-[#EAEAEA] lg:flex lg:flex-col p-12">
+        {/* Raw grid background */}
+        <div className="fixed inset-0 pointer-events-none border-[#2A2A2A] opacity-20 z-0" 
+             style={{ backgroundImage: 'linear-gradient(#2A2A2A 1px, transparent 1px), linear-gradient(90deg, #2A2A2A 1px, transparent 1px)', backgroundSize: '100px 100px' }} />
+        
+        {/* Top left corner telemetry */}
+        <div className="absolute top-0 left-0 border-b border-r border-[#2A2A2A] bg-[#121212] px-4 py-2 font-mono text-[9px] uppercase tracking-widest text-[#FF0000] z-10">
+          IDENTITY_GATE_V2.1 &bull; 0xAUTH
+        </div>
+
+        <div className="relative z-10 mt-12">
           <Brand large />
         </div>
-        <div className="relative my-auto max-w-xl">
-          <p className="font-mono text-[10px] uppercase text-signal">Identity checkpoint</p>
-          <h1 className="font-display mt-5 text-5xl font-semibold leading-tight">
+        
+        <div className="relative my-auto max-w-xl z-10 border-l-4 border-[#FF0000] pl-8">
+          <div className="mb-6 inline-flex items-center gap-2 border border-[#FF0000] bg-[#FF0000]/10 px-3 py-2 text-[10px] uppercase text-[#FF0000] font-mono">
+            <span className="size-2 rounded-none bg-[#FF0000] animate-pulse" /> RESTRICTED ZONE
+          </div>
+          <h1 className="font-serif text-6xl font-normal leading-[0.9] text-white tracking-tighter uppercase">
             The gate knows who holds the mandate.
           </h1>
-          <p className="mt-5 text-base leading-7 text-ink-muted">
-            Secure access for the people defining policy, reviewing exceptions, and authorizing
-            agent payments.
+          <p className="mt-8 text-sm leading-relaxed text-[#EAEAEA]/70 uppercase font-mono border-t border-[#2A2A2A] pt-6">
+            Secure access for the entities defining policy, reviewing exceptions, and authorizing autonomous agent transactions.
           </p>
-          <div className="mt-10 space-y-3">
+          <div className="mt-12 grid grid-rows-3 divide-y divide-[#2A2A2A] border border-[#2A2A2A] bg-[#121212]">
             {[
-              "Your mandates stay private",
-              "Every decision remains attributable",
-              "Sensitive actions require an authenticated session",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-sm">
-                <span className="grid size-6 place-items-center rounded-full bg-safe-soft">
-                  <Check className="size-3.5 text-safe" />
-                </span>
+              "Mandates remain strictly encrypted",
+              "Every decision is cryptographically signed",
+              "Sensitive actions require active session",
+            ].map((item, i) => (
+              <div key={item} className="flex items-center gap-4 p-4 text-xs font-mono uppercase group hover:bg-[#EAEAEA] hover:text-black transition-none">
+                <span className="text-[10px] text-[#FF0000] group-hover:text-black">0{i + 1}</span>
                 {item}
               </div>
             ))}
           </div>
         </div>
-        <div className="relative flex items-center gap-2 font-mono text-[9px] text-ink-muted">
-          <ShieldCheck className="size-4 text-safe" /> AEGIS-9 SECURE SESSION
+
+        <div className="relative mt-auto pt-8 border-t border-[#2A2A2A] z-10">
+          <div className="flex items-center justify-between font-mono text-[9px] uppercase text-[#EAEAEA]/50">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-[#FF0000]" /> AEGIS-9 SECURE SESSION
+            </span>
+            <span>CONNECTION: ESTABLISHED</span>
+          </div>
         </div>
       </section>
       <section className="flex min-h-dvh items-center justify-center px-4 py-16 sm:px-8">
@@ -222,7 +236,7 @@ export function AuthPage() {
                   id="displayName"
                   autoComplete="name"
                   {...register("displayName")}
-                  placeholder="Vikas Saini"
+                  placeholder="Jane Doe"
                 />
                 {errors.displayName && (
                   <p className="text-xs text-danger">{errors.displayName.message}</p>

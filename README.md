@@ -218,6 +218,10 @@ MANDATE bridges the chasm between "Cool AI Demo" and "Production-Ready Enterpris
 - 🐙 **GitHub:** [@vikassaini77](https://github.com/vikassaini77)
 - 🏆 Built for the **PayPal AI Hackathon 2026**
 
+**Saksham Pradhan**
+- 🐙 **GitHub:** [@Sakshamp19](https://github.com/Sakshamp19)
+- 🏆 Built for the **PayPal AI Hackathon 2024**
+
 ---
 
 ## 📄 License

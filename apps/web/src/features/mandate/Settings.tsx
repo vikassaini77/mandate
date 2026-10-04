@@ -91,7 +91,7 @@ export function Settings() {
             <SettingsPanel title="General" icon={Laptop}>
               <Grid>
                 <Field label="Workspace name">
-                  <Input defaultValue="Vikas's control room" />
+                  <Input defaultValue="Primary Control Room" />
                 </Field>
                 <Field label="Default currency">
                   <Select defaultValue="USD">

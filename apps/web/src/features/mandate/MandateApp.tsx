@@ -42,6 +42,7 @@ import {
   Sun,
   Trash2,
   UserRound,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -200,6 +201,17 @@ export function MandateApp({
   const requests = useMandateStore((state) => state.requests);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      return { ...data, email: user.email };
+    }
+  });
+  const displayName = profile?.display_name || profile?.email?.split('@')[0] || "OPERATOR";
+  const initials = displayName.substring(0, 2).toUpperCase();
   const pendingCount = requests.filter((item) => item.status === "pending").length;
   useEffect(() => {
     setView(initialView);
@@ -265,6 +277,15 @@ export function MandateApp({
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background text-foreground selection:bg-primary/20">
       {intro && <MandateIntro onComplete={completeIntro} />}
+      {/* Telemetry Top Bar */}
+      <div className="fixed top-0 inset-x-0 h-8 border-b border-[#2A2A2A] bg-[#050505] z-[100] flex items-center px-4 overflow-hidden text-[10px] uppercase tracking-widest text-[#EAEAEA]/50 font-mono">
+        <div className="flex animate-[marquee_20s_linear_infinite] whitespace-nowrap">
+          SYSTEM_STATUS: ONLINE &bull; REGION: US-EAST-1 &bull; LATENCY: 12MS &bull; POLICY_ENGINE: ACTIVE &bull; DLQ: 0 &bull; SYSTEM_STATUS: ONLINE &bull; REGION: US-EAST-1 &bull; LATENCY: 12MS &bull; POLICY_ENGINE: ACTIVE &bull; DLQ: 0 &bull; SYSTEM_STATUS: ONLINE &bull; REGION: US-EAST-1 &bull; LATENCY: 12MS &bull; POLICY_ENGINE: ACTIVE &bull; DLQ: 0
+        </div>
+      </div>
+      {/* Grid Background overlay */}
+      <div className="fixed inset-0 pointer-events-none border-[#2A2A2A] opacity-20 z-0" 
+           style={{ backgroundImage: 'linear-gradient(#2A2A2A 1px, transparent 1px), linear-gradient(90deg, #2A2A2A 1px, transparent 1px)', backgroundSize: '100px 100px' }} />
       <TransactionFlowBackground
         density={
           view === "dashboard" || view === "audit" || view === "analytics" ? "quiet" : "ambient"
@@ -272,7 +293,7 @@ export function MandateApp({
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 border-r border-sidebar-border bg-sidebar/95 p-3 backdrop-blur-xl transition-all lg:translate-x-0",
+          "fixed inset-y-0 top-8 left-0 z-40 border-r border-sidebar-border bg-sidebar/95 p-3 backdrop-blur-xl transition-none lg:translate-x-0",
           collapsed ? "w-[76px]" : "w-[248px]",
           mobileNav ? "translate-x-0" : "-translate-x-full",
         )}
@@ -344,14 +365,14 @@ export function MandateApp({
               </div>
             )}
             <div className="mt-3 flex items-center gap-3 px-2 py-2">
-              <div className="grid size-8 shrink-0 place-items-center rounded-md bg-sidebar-accent text-xs font-semibold">
-                VS
+              <div className="grid size-8 shrink-0 place-items-center rounded-none bg-sidebar-accent text-xs font-semibold text-white">
+                {initials}
               </div>
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">Vikas Saini</p>
-                    <p className="text-[10px] text-sidebar-muted">Owner</p>
+                    <p className="truncate text-xs font-mono uppercase text-[#EAEAEA]">{displayName}</p>
+                    <p className="text-[10px] text-sidebar-muted font-mono">ROOT_ACCESS</p>
                   </div>
                   <Button variant="ghost" size="icon-sm" onClick={signOut} aria-label="Sign out">
                     <LogOut />
@@ -370,8 +391,8 @@ export function MandateApp({
           aria-label="Close navigation"
         />
       )}
-      <main className={cn("relative z-10 transition-[padding]", sidebarWidth)}>
-        <header className="sticky top-0 z-20 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center border-b border-border bg-background/85 px-4 backdrop-blur-xl md:px-8">
+      <main className={cn("relative z-10 transition-none pt-8", sidebarWidth)}>
+        <header className="sticky top-8 z-20 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center border-b border-border bg-background/85 px-4 backdrop-blur-xl md:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -428,9 +449,9 @@ export function MandateApp({
                   <UserRound />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Vikas Saini</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-52 rounded-none border-[#2A2A2A] bg-[#121212]">
+                <DropdownMenuLabel className="font-mono text-xs uppercase text-[#EAEAEA]">{displayName}</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[#2A2A2A]" />
                 <DropdownMenuItem onClick={() => chooseView("settings")}>
                   <Gauge />
                   Workspace settings
@@ -1381,6 +1402,7 @@ function Approvals() {
   const [limit, setLimit] = useState(200);
   const [celebrate, setCelebrate] = useState(false);
   const [announcement, setAnnouncement] = useState("Approval queue ready");
+  const [signatures, setSignatures] = useState<Record<string, number>>({});
   const active = requests.find((request) => request.id === selected);
   const pending = requests.filter((request) => request.status === "pending");
   const decide = (id: string, status: Exclude<RequestStatus, "pending">) => {
@@ -1423,7 +1445,14 @@ function Approvals() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold">{request.merchant}</h3>
-                  <Status value="escalate" />
+                  {request.amount > 5000 ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-paypal/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-paypal border border-paypal/20">
+                      <Users className="size-3" />
+                      Waiting for Quorum ({(signatures[request.id] || 1)}/3)
+                    </span>
+                  ) : (
+                    <Status value="escalate" />
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{request.item}</p>
               </div>
@@ -1457,14 +1486,45 @@ function Approvals() {
                 <Gauge />
                 Modify limit
               </Button>
-              <Button
-                variant="paypal"
-                className="min-h-11 sm:col-span-1"
-                onClick={() => decide(request.id, "approved")}
-              >
-                <Check />
-                Approve & pay
-              </Button>
+              {request.amount > 5000 ? (
+                <Button
+                  variant="paypal"
+                  className="min-h-11 sm:col-span-1"
+                  onClick={() => {
+                    const currentSigs = signatures[request.id] || 1;
+                    if (currentSigs < 2) {
+                      setSignatures((prev) => ({ ...prev, [request.id]: currentSigs + 1 }));
+                      toast("Signature added", {
+                        description: "Waiting for remaining quorum members.",
+                        icon: <Users className="size-4 text-paypal" />
+                      });
+                    } else {
+                      decide(request.id, "approved");
+                    }
+                  }}
+                >
+                  {(signatures[request.id] || 1) < 2 ? (
+                    <>
+                      <Users />
+                      Sign ({(signatures[request.id] || 1)}/3)
+                    </>
+                  ) : (
+                    <>
+                      <Check />
+                      Approve (2/3)
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="paypal"
+                  className="min-h-11 sm:col-span-1"
+                  onClick={() => decide(request.id, "approved")}
+                >
+                  <Check />
+                  Approve & pay
+                </Button>
+              )}
             </div>
           </motion.div>
         ))}

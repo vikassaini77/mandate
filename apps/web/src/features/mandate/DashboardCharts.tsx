@@ -53,8 +53,13 @@ export function BudgetBurnDownChart() {
             contentStyle={{
               background: "var(--popover)",
               border: "1px solid var(--border)",
-              borderRadius: 6,
+              borderRadius: 0,
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              textTransform: "uppercase",
             }}
+            itemStyle={{ color: "var(--foreground)" }}
+            labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
           />
           <Area
             type="monotone"
@@ -97,8 +102,13 @@ export function CategorySpendChart() {
               contentStyle={{
                 background: "var(--popover)",
                 border: "1px solid var(--border)",
-                borderRadius: 6,
+                borderRadius: 0,
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                textTransform: "uppercase",
               }}
+              itemStyle={{ color: "var(--foreground)" }}
+              labelStyle={{ color: "var(--muted-foreground)" }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -107,7 +117,7 @@ export function CategorySpendChart() {
         {categoryData.map((item) => (
           <div key={item.name} className="text-xs">
             <span
-              className="mr-2 inline-block size-2 rounded-full"
+              className="mr-2 inline-block size-2 rounded-none"
               style={{ background: item.color }}
               aria-hidden="true"
             />

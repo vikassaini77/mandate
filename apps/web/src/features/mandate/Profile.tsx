@@ -1,4 +1,6 @@
 import { cloneElement, isValidElement, useId, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Camera,
   CheckCircle2,
@@ -33,6 +35,17 @@ import {
 import { Slider } from "@/components/ui/slider";
 
 export function Profile() {
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      return { ...data, email: user.email };
+    }
+  });
+  const displayName = profile?.display_name || profile?.email?.split('@')[0] || "OPERATOR";
+  const initials = displayName.substring(0, 2).toUpperCase();
   const [avatar, setAvatar] = useState<string | undefined>();
   const [cropOpen, setCropOpen] = useState(false);
   const [zoom, setZoom] = useState([100]);
@@ -58,9 +71,9 @@ export function Profile() {
           <section className="rounded-md border border-border bg-card p-5 md:p-7">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <div className="relative">
-                <Avatar className="size-24 rounded-md">
+                <Avatar className="size-24 rounded-none border border-[#2A2A2A]">
                   <AvatarImage src={avatar} className="object-cover" />
-                  <AvatarFallback className="rounded-md text-xl">VS</AvatarFallback>
+                  <AvatarFallback className="rounded-none font-mono text-xl text-[#EAEAEA] bg-[#121212]">{initials}</AvatarFallback>
                 </Avatar>
                 <Button
                   size="icon-sm"
@@ -79,8 +92,8 @@ export function Profile() {
                 />
               </div>
               <div>
-                <h2 className="font-display text-xl font-semibold">Vikas Saini</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <h2 className="font-display text-xl font-semibold uppercase text-[#EAEAEA]">{displayName}</h2>
+                <p className="mt-1 text-xs text-muted-foreground font-mono">
                   Owner · Member since September 2026
                 </p>
                 <Button
@@ -96,10 +109,10 @@ export function Profile() {
             </div>
             <div className="mt-7 grid gap-5 sm:grid-cols-2">
               <Field label="Full name">
-                <Input defaultValue="Vikas Saini" />
+                <Input defaultValue={displayName || ""} className="font-mono rounded-none border-[#2A2A2A] bg-[#050505] text-[#EAEAEA]" />
               </Field>
               <Field label="Email">
-                <Input type="email" defaultValue="vikas@example.com" />
+                <Input type="email" defaultValue={profile?.email || ""} className="font-mono rounded-none border-[#2A2A2A] bg-[#050505] text-[#EAEAEA]" readOnly />
               </Field>
               <Field label="Timezone">
                 <Select defaultValue="asia">

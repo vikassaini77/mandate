@@ -113,8 +113,13 @@ export function Analytics() {
                 contentStyle={{
                   background: "var(--popover)",
                   borderColor: "var(--border)",
-                  borderRadius: 6,
+                  borderRadius: 0,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  textTransform: "uppercase",
                 }}
+                itemStyle={{ color: "var(--foreground)" }}
+                labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
               />
               <Area
                 type="monotone"
@@ -152,8 +157,13 @@ export function Analytics() {
                   contentStyle={{
                     background: "var(--popover)",
                     borderColor: "var(--border)",
-                    borderRadius: 6,
+                    borderRadius: 0,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    textTransform: "uppercase",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--muted-foreground)" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -162,7 +172,7 @@ export function Analytics() {
                 <div key={item.name} className="flex items-center justify-between text-xs">
                   <span>
                     <i
-                      className="mr-2 inline-block size-2 rounded-full"
+                      className="mr-2 inline-block size-2 rounded-none"
                       style={{ background: item.color }}
                     />
                     {item.name}
@@ -189,10 +199,12 @@ export function Analytics() {
             <XAxis type="number" hide />
             <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={10} width={100} />
             <Tooltip
-              contentStyle={{ background: "var(--popover)", borderColor: "var(--border)", borderRadius: 6 }}
+              contentStyle={{ background: "var(--popover)", borderColor: "var(--border)", borderRadius: 0, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase" }}
+              itemStyle={{ color: "var(--foreground)" }}
+              labelStyle={{ color: "var(--muted-foreground)" }}
               formatter={(value) => [`${value}% impact`, "SHAP Value"]}
             />
-            <Bar dataKey="contribution" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="contribution" radius={[0, 0, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartPanel>
@@ -257,10 +269,15 @@ export function Analytics() {
               contentStyle={{
                 background: "var(--popover)",
                 borderColor: "var(--border)",
-                borderRadius: 6,
+                borderRadius: 0,
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                textTransform: "uppercase",
               }}
+              itemStyle={{ color: "var(--foreground)" }}
+              labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
             />
-            <Bar dataKey="spend" fill="var(--safe)" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="spend" fill="var(--safe)" radius={[0, 0, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartPanel>
