@@ -46,6 +46,14 @@ The LLM is strictly downgraded to a "Proposer". It can browse catalogs, negotiat
 4. **Retrieval-Augmented Generation (RAG):** AI agents dynamically query the Corporate Employee Handbook using FAISS to justify purchases based on HR policy.
 5. **Multi-Agent Swarm Logic:** Specialized autonomous agents securely delegate tasks among themselves within defined tool-calling boundaries.
 
+### 💻 Enterprise Interface
+
+**Corporate Telemetry & Analytics Dashboard**
+![Mandate Analytics Dashboard](./assets/mandate-dashboard.jpg)
+
+**Red-Team Lab: Deflecting Malicious Prompt Injections**
+![Mandate Red Team Defense](./assets/mandate-redteam.jpg)
+
 ---
 
 ## 🏗 System Architecture (Monorepo)
