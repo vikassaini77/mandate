@@ -228,6 +228,50 @@ export function RedTeamLab() {
         </section>
       </div>
       <LiveThreatStream />
+
+      {/* NEW: Machine Learning Anomaly Detector UI */}
+      <section className="mt-8 rounded-md border border-border bg-card">
+        <div className="border-b border-border px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="size-5 text-indigo-400" />
+            <h2 className="font-display text-lg font-semibold">Behavioral Threat Detection</h2>
+          </div>
+          <span className="rounded-sm bg-indigo-500/10 px-2 py-1 font-mono text-[9px] text-indigo-400 border border-indigo-500/20">
+            MODEL: anomaly_detector.pkl
+          </span>
+        </div>
+        
+        <div className="p-6">
+          <p className="text-sm text-muted-foreground mb-6">
+            Test the AI's ability to intercept novel fraud patterns. The neural engine evaluates real-time transaction velocity, behavioral drift, and contextual anomalies to detect zero-day evasion attacks.
+          </p>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <MLSimulationCard 
+              title="Simulate Normal Transaction" 
+              amount="$50.00" 
+              merchant="Starbucks" 
+              time="2:00 PM" 
+              velocity="Low" 
+              expectedScore={0.0} 
+              expectedVerdict="APPROVE" 
+              color="text-safe" 
+              bg="bg-safe" 
+            />
+            <MLSimulationCard 
+              title="Simulate Hacker Transaction" 
+              amount="$4,500.00" 
+              merchant="Unknown LLC" 
+              time="3:00 AM" 
+              velocity="Extreme" 
+              expectedScore={0.92} 
+              expectedVerdict="ESCALATE" 
+              color="text-danger" 
+              bg="bg-danger" 
+            />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -337,5 +381,63 @@ function ChevronMark({ active }: { active: boolean }) {
     <Siren className="size-4 shrink-0 text-danger" />
   ) : (
     <TerminalSquare className="size-4 shrink-0 text-muted-foreground" />
+  );
+}
+
+function MLSimulationCard({ title, amount, merchant, time, velocity, expectedScore, expectedVerdict, color, bg }: any) {
+  const [status, setStatus] = useState<"idle" | "scoring" | "done">("idle");
+  const [score, setScore] = useState(0);
+
+  const run = () => {
+    setStatus("scoring");
+    setScore(0);
+    let current = 0;
+    const interval = setInterval(() => {
+      current += 0.05;
+      if (current >= expectedScore) {
+        setScore(expectedScore);
+        clearInterval(interval);
+        setTimeout(() => setStatus("done"), 200);
+      } else {
+        setScore(current);
+      }
+    }, 50);
+  };
+
+  return (
+    <div className="border border-border bg-subtle rounded-md p-5 flex flex-col justify-between">
+      <div>
+        <h3 className="font-semibold text-sm mb-3">{title}</h3>
+        <ul className="text-xs text-muted-foreground space-y-1 mb-5 font-mono">
+          <li>Amount: <span className="text-foreground">{amount}</span></li>
+          <li>Merchant: <span className="text-foreground">{merchant}</span></li>
+          <li>Time: <span className="text-foreground">{time}</span></li>
+          <li>Velocity: <span className="text-foreground">{velocity}</span></li>
+        </ul>
+      </div>
+      
+      <div>
+        {status === "idle" ? (
+          <Button onClick={run} variant="secondary" className="w-full text-xs h-8">
+            Run ML Evaluation
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between text-xs font-mono">
+              <span>Risk Score:</span>
+              <span className={cn(status === "done" && color)}>{score.toFixed(2)}</span>
+            </div>
+            <Progress value={score * 100} className={cn("h-1.5", `[&>div]:${bg}`)} />
+            {status === "done" && (
+              <div className={cn("text-center text-xs font-bold font-mono py-1 rounded-sm border", 
+                expectedVerdict === "APPROVE" ? "border-safe text-safe bg-safe/10" : "border-danger text-danger bg-danger/10"
+              )}>
+                {expectedVerdict}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ from packages.database.mandate import MandateState
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
 from apps.api.src.services.security_monitor import SecurityMonitor
+from packages.ml.manager import MLManager
 
 def is_within_time_window(time_windows: list[str], now: datetime) -> bool:
     """
@@ -136,13 +137,31 @@ def _evaluate_rules(
             reason=f"Escalated: The ML risk score of {proposal.ml_risk_score} exceeds the threshold of 0.8."
         )
 
-    # Rule 10: Otherwise APPROVE
+    # Rule 10: Evasion Attack Logic (Velocity)
+    if spend_state.daily_purchase_count >= mandate.rules.daily_purchase_count_cap:
+        return Decision(
+            verdict=Verdict.BLOCK,
+            rule_id="RULE-10-EVASION-VELOCITY",
+            reason=f"Blocked: Daily purchase count of {spend_state.daily_purchase_count} reaches the cap of {mandate.rules.daily_purchase_count_cap}. This prevents velocity-based evasion."
+        )
+        
+    # Rule 11: Evasion Attack Logic (Structuring)
+    # Detect if the agent is splitting a big purchase into multiple smaller ones just under the auto-approve limit.
+    structuring_threshold = mandate.rules.auto_approve_limit * 0.9
+    if proposal.amount >= structuring_threshold and proposal.amount <= mandate.rules.auto_approve_limit:
+        if spend_state.daily_purchase_count >= 2:
+            return Decision(
+                verdict=Verdict.BLOCK,
+                rule_id="RULE-11-EVASION-STRUCTURING",
+                reason=f"Blocked: Detected structuring evasion attack. Proposal of {proposal.amount/100:.2f} is suspiciously close to the auto-approve limit of {mandate.rules.auto_approve_limit/100:.2f} while having multiple recent transactions."
+            )
+
+    # Rule 12: Otherwise APPROVE
     return Decision(
         verdict=Verdict.APPROVE,
-        rule_id="RULE-10-APPROVE",
+        rule_id="RULE-12-APPROVE",
         reason=f"Approved: Proposal of {proposal.amount/100:.2f} from {proposal.merchant} passes all checks."
     )
-
 def evaluate(
     mandate: MandateState, 
     proposal: ProposalState, 
@@ -153,6 +172,22 @@ def evaluate(
     Evaluates the proposal and fires WebSocket events to the frontend Security Monitor
     if a BLOCK or ESCALATE occurs.
     """
+    # 3.2 Real-Time ML Scoring
+    # Extract features from the live proposal context
+    is_sketchy = proposal.amount > 100000 or "Unknown" in proposal.merchant
+    
+    score = MLManager.score_risk(
+        text=f"{proposal.merchant} {proposal.category}",
+        amount=float(proposal.amount) / 100.0,  # ML expects actual dollars
+        hour_of_day=now.hour,
+        category_novelty=1.0 if is_sketchy else 0.0,
+        merchant_novelty=1.0 if is_sketchy else 0.0,
+        velocity_1h=min(spend_state.daily_purchase_count, 10),
+        velocity_24h=spend_state.daily_purchase_count
+    )
+    # Assign the score to the proposal so Rule 9 can evaluate it and it appears in audits
+    proposal.ml_risk_score = round(score, 3)
+    
     decision = _evaluate_rules(mandate, proposal, spend_state, now)
     
     if decision.verdict in [Verdict.BLOCK, Verdict.ESCALATE]:

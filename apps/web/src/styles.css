@@ -16,7 +16,7 @@
   --color-signal: var(--signal); --color-signal-foreground: var(--signal-foreground); --color-ink: var(--ink); --color-ink-foreground: var(--ink-foreground); --color-ink-muted: var(--ink-muted); --color-ink-border: var(--ink-border);
   --color-subtle: var(--subtle); --color-overlay: var(--overlay); --color-paypal: var(--paypal); --color-paypal-foreground: var(--paypal-foreground);
   --color-vault: var(--vault); --color-vault-raised: var(--vault-raised); --color-vault-line: var(--vault-line); --color-gate: var(--gate); --color-flow-node: var(--flow-node); --color-flow-gate: var(--flow-gate);
-  --font-sans: "JetBrains Mono", monospace; --font-display: "Ogg", "Times New Roman", serif; --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "JetBrains Mono", monospace; --font-display: "JetBrains Mono", monospace; --font-mono: "JetBrains Mono", monospace;
 }
 
 :root {

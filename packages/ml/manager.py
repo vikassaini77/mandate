@@ -47,6 +47,51 @@ class MLManager:
                 cls._metrics = json.load(f)
 
     @classmethod
+    def seed_anomaly_model(cls) -> int:
+        """
+        Seeds the Isolation Forest with a larger synthetic dataset (500 normal, 50 anomalous).
+        We can dynamically generate as many as we want!
+        """
+        import random
+        import pandas as pd
+        from .anomaly_detector import AnomalyDetector
+        
+        # 500 normal transactions (boring hours, small amounts)
+        normal_data = []
+        for _ in range(500):
+            normal_data.append({
+                'amount': random.uniform(5.0, 150.0),
+                'hour_of_day': random.randint(8, 20),
+                'category_novelty': 0.0,
+                'merchant_novelty': 0.0,
+                'velocity_1h': random.randint(0, 1),
+                'velocity_24h': random.randint(1, 4)
+            })
+            
+        # 50 anomalous transactions (3 AM, large amounts, high velocity)
+        anomalous_data = []
+        for _ in range(50):
+            anomalous_data.append({
+                'amount': random.uniform(1500.0, 6000.0),
+                'hour_of_day': random.randint(0, 4),
+                'category_novelty': 1.0,
+                'merchant_novelty': 1.0,
+                'velocity_1h': random.randint(5, 12),
+                'velocity_24h': random.randint(15, 30)
+            })
+            
+        df = pd.DataFrame(normal_data + anomalous_data)
+        
+        detector = AnomalyDetector()
+        detector.fit(df)
+        
+        os.makedirs(cls._artifacts_dir, exist_ok=True)
+        detector.save(cls._artifacts_dir)
+        cls._models['anomaly'] = detector
+        
+        return len(df)
+
+    @classmethod
     def get_health(cls) -> dict:
         return {
             "status": "ok",
@@ -69,7 +114,9 @@ class MLManager:
         # 1. Injection Risk
         injection_model = cls._models.get('injection')
         if injection_model:
-            risk = max(risk, injection_model.predict_proba(text))
+            inj_risk = injection_model.predict_proba(text)
+            if inj_risk > 0.8: # Only apply if it's a severe injection, otherwise ignore the noisy dummy model
+                risk = max(risk, inj_risk)
         else:
             # Fallback for injection risk: strictly flag imperatives
             if "override" in text.lower():

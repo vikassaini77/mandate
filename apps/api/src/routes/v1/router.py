@@ -12,6 +12,7 @@ from apps.api.src.routes.v1.endpoints.redteam import router as redteam_router
 from apps.api.src.routes.v1.endpoints.settings import router as settings_router
 from apps.api.src.routes.v1.endpoints.webhooks import router as webhooks_router
 from apps.api.src.routes.v1.endpoints.health import router as health_router
+from apps.api.src.routes.v1.endpoints.ml import router as ml_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -25,4 +26,5 @@ api_router.include_router(analytics_router, prefix='/analytics', tags=['analytic
 api_router.include_router(redteam_router, prefix='/redteam', tags=['redteam'])
 api_router.include_router(settings_router, prefix='/settings', tags=['settings'])
 api_router.include_router(webhooks_router, prefix='/webhooks', tags=['webhooks'])
+api_router.include_router(ml_router, prefix='/ml', tags=['ml'])
 api_router.include_router(health_router, tags=['system'])
