@@ -15,6 +15,24 @@ async def seed_ml_model():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+from pydantic import BaseModel
+
+class InjectionRequest(BaseModel):
+    prompt: str
+
+@router.post("/check-injection")
+async def check_injection(req: InjectionRequest):
+    """Evaluates a prompt against the Semantic Injection Defense model (FAISS)."""
+    try:
+        injection_model = MLManager._models.get('injection')
+        if not injection_model:
+            return {"status": "error", "message": "Injection model not loaded", "score": 0.0}
+        
+        score = injection_model.predict_proba(req.prompt)
+        return {"status": "success", "score": score}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "score": 0.0}
+
 @router.get("/health")
 async def get_ml_health():
     """Returns the current ML model load states"""

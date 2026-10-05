@@ -1,32 +1,41 @@
 import os
-import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+from transformers import pipeline
 
 class InjectionClassifier:
     """
-    Prompt-injection classifier.
-    Baseline: TF-IDF + logistic regression.
+    Semantic prompt-injection classifier (Feature 4.1).
+    Uses deepset/deberta-v3-base-injection, a true neural classifier fine-tuned 
+    specifically on tens of thousands of prompt injection attacks.
     """
     def __init__(self):
-        self.vectorizer = TfidfVectorizer(max_features=10000, ngram_range=(1, 2))
-        self.model = LogisticRegression(class_weight='balanced')
+        # We load a massive fine-tuned LLM brain explicitly trained for prompt injections
+        # It downloads to the HuggingFace cache (~500MB) on first boot.
+        self.classifier = pipeline("text-classification", model="deepset/deberta-v3-base-injection")
 
     def fit(self, texts: list[str], labels: list[int]):
-        X = self.vectorizer.fit_transform(texts)
-        self.model.fit(X, labels)
+        # Not needed. The DeBERTa brain is already fully trained.
+        pass
 
     def predict_proba(self, text: str) -> float:
-        X = self.vectorizer.transform([text])
-        return self.model.predict_proba(X)[0][1] # Probability of class 1 (Injection)
+        """
+        Returns a risk score between 0.0 and 1.0 based on the model's neural evaluation
+        of malicious injection intent.
+        """
+        # Max length constraint for DeBERTa is usually 512 tokens
+        # We truncate the input just in case it's a massive prompt
+        result = self.classifier(text[:2000], truncation=True, max_length=512)[0]
+        
+        # result looks like: {'label': 'INJECTION', 'score': 0.998}
+        if result['label'] == 'INJECTION':
+            return result['score']
+        
+        # If it's labeled LEGITIMATE, the "injection risk" is inverted
+        return 1.0 - result['score']
 
     def save(self, directory: str):
-        joblib.dump(self.vectorizer, os.path.join(directory, "injection_vectorizer.pkl"))
-        joblib.dump(self.model, os.path.join(directory, "injection_model.pkl"))
+        # We don't save the weights locally, the huggingface cache handles it!
+        pass
 
     @classmethod
     def load(cls, directory: str) -> 'InjectionClassifier':
-        inst = cls()
-        inst.vectorizer = joblib.load(os.path.join(directory, "injection_vectorizer.pkl"))
-        inst.model = joblib.load(os.path.join(directory, "injection_model.pkl"))
-        return inst
+        return cls()

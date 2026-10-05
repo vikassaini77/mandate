@@ -12,6 +12,7 @@ import {
   Waypoints,
   Wrench,
   ShieldCheck,
+  Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -375,6 +376,68 @@ function AuditDetails({ row, overlay }: { row: AuditRecord; overlay?: boolean })
           ))}
         </div>
       </div>
+      
+      {row.verdict === "BLOCK" && <CitationEmail blockContext={row} />}
     </motion.div>
+  );
+}
+
+function CitationEmail({ blockContext }: { blockContext: AuditRecord }) {
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const generateEmail = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:8000/api/v1/agent/generate-citation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchant: blockContext.merchant,
+          amount: typeof blockContext.amount === "string" ? parseFloat(blockContext.amount.replace(/[^0-9.]/g, '')) : Number(blockContext.amount),
+          rule_id: blockContext.ruleCode,
+          reasoning: blockContext.reasoning
+        })
+      });
+      const data = await res.json();
+      setEmail(data.email);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to generate citation email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-5 border-t border-border pt-4">
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-2 font-mono text-[9px] uppercase text-muted-foreground">
+          <Mail className="size-3.5" />
+          Policy Citation Email
+        </p>
+        {!email && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-[10px] font-mono"
+            onClick={generateEmail}
+            disabled={loading}
+          >
+            {loading ? "Generating via Claude..." : "Generate Citation"}
+          </Button>
+        )}
+      </div>
+      
+      {email && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mt-3 p-4 bg-subtle border border-border rounded-md font-mono text-xs whitespace-pre-wrap leading-relaxed"
+        >
+          {email}
+        </motion.div>
+      )}
+    </div>
   );
 }
