@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { redTeamScenarios } from "./mock";
+import { mandateApi } from "./api";
 
 type Scenario = (typeof redTeamScenarios)[number];
 
@@ -27,9 +28,12 @@ export function RedTeamLab() {
     return initial;
   });
   const [phase, setPhase] = useState<"idle" | "attacking" | "blocked">("idle");
-  const runAttack = () => {
+  const [attackResult, setAttackResult] = useState<any>(null);
+  const runAttack = async () => {
     setPhase("attacking");
-    window.setTimeout(() => setPhase("blocked"), 1350);
+    const res = await mandateApi.runRedTeamScenario(selected.id);
+    setAttackResult(res);
+    if (res.result?.bypassed_firewall) { setPhase("idle"); } else { setPhase("blocked"); }
   };
   return (
     <div className="space-y-6">
@@ -523,3 +527,5 @@ function SemanticInjectionCard() {
     </section>
   );
 }
+
+

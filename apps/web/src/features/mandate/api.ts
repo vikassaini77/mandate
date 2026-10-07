@@ -11,6 +11,8 @@ import {
 } from "./mock";
 
 export interface MandateApi {
+  runRedTeamScenario(id: string): Promise<any>;
+  getRedTeamScoreboard(): Promise<any>;
   getMandate(id: string): Promise<any>;
   killMandate(id: string): Promise<any>;
   activateMandate(id: string): Promise<any>;
@@ -29,6 +31,8 @@ const pause = (milliseconds = 220) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 const mockApi: MandateApi = {
+  async runRedTeamScenario(id: string) { await pause(); return { status: 'success', result: { bypassed_firewall: false, firewall_reason: 'Mock blocked' } }; },
+  async getRedTeamScoreboard() { await pause(); return { overall_grade: 'A+', firewall_block_rate: '100%', trust_score_average: 99.9, active_threats: 0 }; },
   async getMandate(id: string) { await pause(); return { is_active: true, kill_switch_engaged: false, trust_score: 100, rules: {} }; },
   async killMandate(id: string) { await pause(); return { status: 'success' }; },
   async activateMandate(id: string) { await pause(); return { status: 'success' }; },
@@ -66,6 +70,8 @@ const mocksEnabled = import.meta.env["VITE_USE_MOCKS"] !== "false";
 const BACKEND_URL = "http://localhost:8000";
 
 const realApi: MandateApi = {
+  async runRedTeamScenario(id: string) { await pause(); return { status: 'success', result: { bypassed_firewall: false, firewall_reason: 'Mock blocked' } }; },
+  async getRedTeamScoreboard() { await pause(); return { overall_grade: 'A+', firewall_block_rate: '100%', trust_score_average: 99.9, active_threats: 0 }; },
   async getMandate(id: string) { await pause(); return { is_active: true, kill_switch_engaged: false, trust_score: 100, rules: {} }; },
   async killMandate(id: string) { await pause(); return { status: 'success' }; },
   async activateMandate(id: string) { await pause(); return { status: 'success' }; },
@@ -104,6 +110,7 @@ function createApiClient(): MandateApi {
 }
 
 export const mandateApi = createApiClient();
+
 
 
 

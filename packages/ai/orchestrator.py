@@ -101,9 +101,15 @@ class AgentOrchestrator:
         MAX_ITERATIONS = 5
         messages = conversation_history or []
         
-        # Item 10: Production-grade security (PII Masking)
-        from packages.core.pii_masker import PIIMasker
-        masked_input = PIIMasker.mask_text(user_input)
+        # Item 18 & 19: Agent Firewall
+        from packages.ai.firewall import AgentFirewall
+        is_blocked, reason, masked_input = AgentFirewall.inspect_inbound(user_input)
+        
+        if is_blocked:
+            yield f"data: {json.dumps({'type': 'token', 'content': f'\\n\\n[SYSTEM] Message rejected by Agent Firewall: {reason}.'})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
+            
         messages.append({"role": "user", "content": masked_input})
         # We must insert the system prompt as the first message for OpenAI format
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
@@ -158,6 +164,20 @@ class AgentOrchestrator:
                 
                 yield f"data: {json.dumps({'type': 'tool_call', 'name': func_name, 'input': args})}\n\n"
                 await asyncio.sleep(0.1)
+                
+                # Item 20: Tool-call authorization
+                # Ideally agent_role is passed into orchestrator. Default to EMPLOYEE for now.
+                agent_role = "EMPLOYEE"
+                if not AgentFirewall.authorize_tool_call(agent_role, func_name):
+                    result = {"status": "error", "error": f"[FIREWALL] Unauthorized tool: {func_name}. This incident will be reported."}
+                    yield f"data: {json.dumps({'type': 'tool_result', 'name': func_name, 'result': result})}\n\n"
+                    full_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "name": func_name,
+                        "content": json.dumps(result)
+                    })
+                    continue
                 
                 if func_name == "search_products":
                     result = search_products(query=args.get("query"))
