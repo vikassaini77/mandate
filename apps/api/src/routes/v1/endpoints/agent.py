@@ -8,14 +8,31 @@ from packages.database.mandate import MandateState, RuleConfig
 from packages.database.spend_state import SpendState
 import datetime
 
+from apps.api.src.services.auth import get_current_principal, Principal, Role
+import asyncio
+
 router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
     history: list = []
 
+# Mock distributed lock store for Idempotency and Concurrency (Item 9)
+active_chat_locks = set()
+
 @router.post('/chat/stream')
-async def chat_stream(request: ChatRequest):
+async def chat_stream(
+    request: ChatRequest,
+    principal: Principal = Depends(get_current_principal)
+):
+    # Enforce Concurrency & Idempotency
+    lock_key = f"{principal.tenant_id}:{principal.identity_id}"
+    if lock_key in active_chat_locks:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=429, detail="Concurrent agent session already active for this identity.")
+    
+    active_chat_locks.add(lock_key)
+    try:
     # Use OpenAI API compatible endpoint for Gemini
     api_key = os.environ.get("GEMINI_API_KEY", "")
     client = AsyncOpenAI(
@@ -38,12 +55,23 @@ async def chat_stream(request: ChatRequest):
         current_daily_spend=15000
     )
     
-    orchestrator = AgentOrchestrator(client=client, mandate=mock_mandate, spend_state=mock_spend)
-    
-    return StreamingResponse(
-        orchestrator.stream_loop(request.message, request.history),
-        media_type="text/event-stream"
-    )
+        orchestrator = AgentOrchestrator(client=client, mandate=mock_mandate, spend_state=mock_spend)
+        
+        # We need a custom generator to release the lock when streaming finishes
+        async def event_generator():
+            try:
+                async for chunk in orchestrator.stream_loop(request.message, request.history):
+                    yield chunk
+            finally:
+                active_chat_locks.discard(lock_key)
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream"
+        )
+    except Exception as e:
+        active_chat_locks.discard(lock_key)
+        raise e
 
 @router.get('/conversations')
 async def list_conversations(skip: int = 0, limit: int = 100): 
