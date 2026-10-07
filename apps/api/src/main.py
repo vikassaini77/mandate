@@ -57,7 +57,8 @@ app.include_router(api_router, prefix="/api/v1")
 @app.on_event("startup")
 async def startup_event():
     # Lazy load ML models at startup
-    MLManager.load_models()
+    # MLManager.load_models()
+    pass
 
 @app.get("/ml/health")
 async def ml_health():

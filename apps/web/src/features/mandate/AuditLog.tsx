@@ -75,23 +75,23 @@ export function AuditLog() {
       format === "json"
         ? JSON.stringify(rows, null, 2)
         : [
-            "id,time,merchant,item,category,amount,verdict,rule,paypal_order_id",
-            ...rows.map((row) =>
-              [
-                row.id,
-                row.occurredAt,
-                row.merchant,
-                row.item,
-                row.category,
-                row.amount,
-                row.decision,
-                row.ruleCode,
-                row.paypalOrderId ?? "",
-              ]
-                .map((value) => `"${String(value).replaceAll('"', '""')}"`)
-                .join(","),
-            ),
-          ].join("\n");
+          "id,time,merchant,item,category,amount,verdict,rule,paypal_order_id",
+          ...rows.map((row) =>
+            [
+              row.id,
+              row.occurredAt,
+              row.merchant,
+              row.item,
+              row.category,
+              row.amount,
+              row.decision,
+              row.ruleCode,
+              row.paypalOrderId ?? "",
+            ]
+              .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+              .join(","),
+          ),
+        ].join("\n");
     const url = URL.createObjectURL(
       new Blob([body], { type: format === "json" ? "application/json" : "text/csv" }),
     );
@@ -376,7 +376,7 @@ function AuditDetails({ row, overlay }: { row: AuditRecord; overlay?: boolean })
           ))}
         </div>
       </div>
-      
+
       {row.verdict === "BLOCK" && <CitationEmail blockContext={row} />}
     </motion.div>
   );
@@ -417,9 +417,9 @@ function CitationEmail({ blockContext }: { blockContext: AuditRecord }) {
           Policy Citation Email
         </p>
         {!email && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="h-7 text-[10px] font-mono"
             onClick={generateEmail}
             disabled={loading}
@@ -428,9 +428,9 @@ function CitationEmail({ blockContext }: { blockContext: AuditRecord }) {
           </Button>
         )}
       </div>
-      
+
       {email && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           className="mt-3 p-4 bg-subtle border border-border rounded-md font-mono text-xs whitespace-pre-wrap leading-relaxed"
