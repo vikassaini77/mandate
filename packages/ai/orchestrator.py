@@ -147,6 +147,14 @@ class AgentOrchestrator:
             assistant_msg = {"role": "assistant"}
             if assistant_message:
                 assistant_msg["content"] = assistant_message
+                
+                # Item 33: Usage Metering (SaaS)
+                from packages.billing.stripe_client import billing_manager
+                # In production, pull actual token counts from completion headers
+                estimated_tokens = len(assistant_message) // 4
+                tenant_id = "org_demo_1" # In a real app, this is fetched from the Principal context
+                billing_manager.report_usage(tenant_id, metric_name="llm_tokens", quantity=estimated_tokens)
+                
             if tool_calls:
                 assistant_msg["tool_calls"] = tool_calls
             full_messages.append(assistant_msg)
