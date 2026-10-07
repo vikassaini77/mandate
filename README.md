@@ -178,7 +178,11 @@ Our GitHub Actions pipeline explicitly gates deployments behind our `RedTeam Lab
 
 **Saksham Pradhan**
 - 🐙 **GitHub:** [@Sakshamp19](https://github.com/Sakshamp19)
-- 🏆 Built for the **PayPal AI Hackathon 2024**
+- 🏆 Built for the **PayPal AI Hackathon 2026**
+
+**Prashant Swami**
+- 🐙 **GitHub:** [@PrashantSwami](https://github.com/PrashantSwami)  <!-- Update handle if needed -->
+- 🏆 Built for the **PayPal AI Hackathon 2026**
 
 ---
 
