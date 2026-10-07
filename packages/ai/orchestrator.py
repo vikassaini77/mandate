@@ -100,8 +100,11 @@ class AgentOrchestrator:
         """
         MAX_ITERATIONS = 5
         messages = conversation_history or []
-        messages.append({"role": "user", "content": user_input})
         
+        # Item 10: Production-grade security (PII Masking)
+        from packages.core.pii_masker import PIIMasker
+        masked_input = PIIMasker.mask_text(user_input)
+        messages.append({"role": "user", "content": masked_input})
         # We must insert the system prompt as the first message for OpenAI format
         full_messages = [{"role": "system", "content": self.system_prompt}] + messages
 
