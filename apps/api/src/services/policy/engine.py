@@ -190,6 +190,19 @@ def evaluate(
     
     decision = _evaluate_rules(mandate, proposal, spend_state, now)
     
+    # --- Item 11 & 14: Agent Trust Score & Quarantine ---
+    if decision.verdict == Verdict.APPROVE:
+        mandate.trust_score = min(100.0, mandate.trust_score + 2.0)
+    elif decision.verdict == Verdict.ESCALATE:
+        mandate.trust_score = max(0.0, mandate.trust_score - 10.0)
+    elif decision.verdict == Verdict.BLOCK:
+        mandate.trust_score = max(0.0, mandate.trust_score - 25.0)
+
+    # Agent Quarantine Trigger
+    if mandate.trust_score < 30.0 and not mandate.kill_switch_engaged:
+        mandate.kill_switch_engaged = True
+        decision.details = {"quarantine_triggered": True, "trust_score": mandate.trust_score}
+    
     if decision.verdict in [Verdict.BLOCK, Verdict.ESCALATE]:
         payload = {
             "type": "threat_detected",
@@ -198,6 +211,7 @@ def evaluate(
             "reason": decision.reason,
             "merchant": proposal.merchant,
             "amount": proposal.amount,
+            "trust_score": mandate.trust_score,
             "timestamp": now.isoformat()
         }
         monitor = SecurityMonitor.get_instance()
@@ -216,6 +230,7 @@ def evaluate(
         "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,
         "rule_id": decision.rule_id,
         "ml_risk_score": proposal.ml_risk_score,
+        "trust_score_after": mandate.trust_score,
         "timestamp": now.isoformat()
     }
     decision.audit_hash = global_audit_chain.add_record(audit_payload)

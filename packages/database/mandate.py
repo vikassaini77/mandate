@@ -19,3 +19,4 @@ class MandateState(BaseModel):
     currency: str = "USD"
     supported_currencies: List[str] = Field(default_factory=lambda: ["USD"])
     rules: RuleConfig
+    trust_score: float = 100.0
