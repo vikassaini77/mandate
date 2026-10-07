@@ -19,6 +19,8 @@ import {
   Webhook,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { mandateApi } from "./api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +56,10 @@ const tabs = [
   { id: "privacy", label: "Data & Privacy" },
 ];
 export function Settings() {
+  const queryClient = useQueryClient();
+  const { data: mandateData } = useQuery({ queryKey: ['mandate', 'mandate_1'], queryFn: () => mandateApi.getMandate('mandate_1') });
+  const killMutation = useMutation({ mutationFn: () => mandateApi.killMandate('mandate_1'), onSuccess: () => { queryClient.invalidateQueries({queryKey: ['mandate', 'mandate_1']}); toast.error('Agent KILLED'); } });
+  const activateMutation = useMutation({ mutationFn: () => mandateApi.activateMandate('mandate_1'), onSuccess: () => { queryClient.invalidateQueries({queryKey: ['mandate', 'mandate_1']}); toast.success('Agent ACTIVATED'); } });
   const [autonomy, setAutonomy] = useState([62]);
   const [motion, setMotion] = useState(false);
   const [intensity, setIntensity] = useState([35]);
@@ -196,6 +202,11 @@ export function Settings() {
           </TabsContent>
           <TabsContent value="security">
             <SettingsPanel title="Security" icon={LockKeyhole}>
+              <Row
+                title="Emergency Kill Switch"
+                detail="Instantly revoke all agent access and quarantine it."
+                action={<Switch checked={mandateData?.kill_switch_engaged} onCheckedChange={(val) => val ? killMutation.mutate() : activateMutation.mutate()} />}
+              />
               <Row
                 title="Two-factor authentication"
                 detail={
@@ -550,3 +561,4 @@ function Confirm({
     </AlertDialog>
   );
 }
+

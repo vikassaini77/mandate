@@ -1428,6 +1428,8 @@ function Approvals() {
   const pending = requests.filter((request) => request.status === "pending");
   const decide = (id: string, status: Exclude<RequestStatus, "pending">) => {
     resolve(id, status);
+    if (status === 'approved') mandateApi.approveTransaction(id).catch(console.error);
+    if (status === 'denied') mandateApi.denyTransaction(id).catch(console.error);
     setSelected(null);
     if (status === "approved") {
       setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
@@ -1869,3 +1871,4 @@ interface SpeechRecognitionLike {
   onresult: (event: { results: ArrayLike<{ 0?: { transcript?: string } }> }) => void;
   start: () => void;
 }
+
