@@ -1,9 +1,10 @@
 import hmac
 import os
-import pyotp
 from datetime import datetime, timedelta, timezone
+
+import pyotp
+from jose import jwt
 from passlib.context import CryptContext
-from jose import jwt, JWTError
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 

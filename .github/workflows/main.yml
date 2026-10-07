@@ -33,5 +33,5 @@ jobs:
       run: mypy .
       
     - name: Run tests
-      working-directory: ./apps/api
+      working-directory: ./tests
       run: pytest
