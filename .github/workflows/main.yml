@@ -21,17 +21,17 @@ jobs:
       run: pip install uv
       
     - name: Install dependencies
-      working-directory: ./backend
+      working-directory: ./apps/api
       run: uv pip install --system -e ".[dev]"
       
     - name: Lint with ruff
-      working-directory: ./backend
+      working-directory: ./apps/api
       run: ruff check .
       
     - name: Type check with mypy
-      working-directory: ./backend
+      working-directory: ./apps/api
       run: mypy .
       
     - name: Run tests
-      working-directory: ./backend
+      working-directory: ./apps/api
       run: pytest
