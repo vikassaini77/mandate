@@ -61,7 +61,7 @@ export function ScreenSkeleton() {
   );
 }
 
-export function RouteFailure({ missing, onRetry }: { missing?: boolean; onRetry?: () => void }) {
+export function RouteFailure({ missing, onRetry, error }: { missing?: boolean; onRetry?: () => void; error?: any }) {
   return (
     <main className="grid min-h-dvh place-items-center bg-background px-4 text-foreground">
       <div className="max-w-md text-center">
@@ -72,10 +72,10 @@ export function RouteFailure({ missing, onRetry }: { missing?: boolean; onRetry?
         <h1 className="mt-3 font-display text-3xl font-semibold">
           {missing ? "This path has no clearance." : "The gate could not load."}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 text-sm leading-6 text-muted-foreground whitespace-pre-wrap text-left bg-muted/20 p-2 rounded">
           {missing
             ? "The page may have moved, or the address does not belong to this workspace."
-            : "Your rules and funds remain safe. Retry the request or return to the control room."}
+            : error instanceof Error ? error.stack : (error?.message || "Your rules and funds remain safe. Retry the request or return to the control room.")}
         </p>
         <div className="mt-6 flex justify-center gap-2">
           {onRetry && (

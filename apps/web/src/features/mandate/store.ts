@@ -20,12 +20,16 @@ export interface PurchaseRequest {
 interface MandateState {
   mandates: Mandate[];
   requests: PurchaseRequest[];
+  localAI: boolean;
+  setLocalAI: (enabled: boolean) => void;
   addMandate: (text: string, limit: number) => void;
   resolveRequest: (id: string, status: Exclude<RequestStatus, "pending">) => void;
   toggleMandate: (id: string) => void;
 }
 
 export const useMandateStore = create<MandateState>((set) => ({
+  localAI: false,
+  setLocalAI: (enabled) => set({ localAI: enabled }),
   mandates: [
     {
       id: "m-1",

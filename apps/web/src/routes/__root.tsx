@@ -28,6 +28,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
   return (
     <RouteFailure
+      error={error}
       onRetry={() => {
         router.invalidate();
         reset();

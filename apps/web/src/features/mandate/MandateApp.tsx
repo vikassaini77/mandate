@@ -114,6 +114,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { mandateApi } from "./api";
 import { useMandateStore, type RequestStatus } from "./store";
+import { customAiFetch } from "@/lib/ai/local-fetch";
 import { MandateIntro } from "./MandateIntro";
 import { TransactionFlowBackground } from "./TransactionFlowBackground";
 import { ChatSettingsDrawer } from "./ChatSettingsDrawer";
@@ -121,6 +122,7 @@ import { ScreenSkeleton } from "./WorkspaceStates";
 import { featuredProposal } from "./mock";
 import { VerdictBadge } from "./VerdictBadge";
 import { BiometricModal } from "./BiometricModal";
+import { TelemetryWidget } from "./TelemetryWidget";
 
 const AuditLog = lazy(() => import("./AuditLog").then((module) => ({ default: module.AuditLog })));
 const RedTeamLab = lazy(() =>
@@ -770,6 +772,8 @@ function ChatSession({
   navigate: ReturnType<typeof useNavigate>;
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
+  const localAI = useMandateStore((state) => state.localAI);
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -779,8 +783,9 @@ function ChatSession({
           return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
         },
         body: { id: threadId },
+        fetch: localAI ? customAiFetch : undefined,
       }),
-    [threadId],
+    [threadId, localAI],
   );
   const { messages, sendMessage, status, stop, regenerate } = useChat({
     id: threadId,
@@ -907,7 +912,8 @@ function ChatSession({
     inputRef.current?.focus();
   };
   return (
-    <div className="flex h-full min-w-0 overflow-hidden">
+    <div className="flex h-full min-w-0 overflow-hidden relative">
+      <TelemetryWidget messages={messages} status={status as string} />
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {chatAnnouncement}
       </p>
@@ -1050,33 +1056,54 @@ function ChatSession({
               <Message key={message.id} from={message.role}>
                 <MessageContent>
                   {message.parts.map((part, partIndex) =>
-                    part.type === "text" ? (
+                    part.type === "text" && part.text.trim() !== "" ? (
                       <MessageResponse
                         key={`${message.id}-${partIndex}`}
                         isAnimating={busy && index === messages.length - 1}
                       >
                         {part.text}
                       </MessageResponse>
+                    ) : part.type === "tool-invocation" && part.toolInvocation.toolName === "delegate_task" ? (
+                      <div key={`${message.id}-${partIndex}`} className="mt-4 mb-2 rounded-lg border border-border bg-subtle p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3 border-b border-border pb-2">
+                          <Users className="size-4 text-signal" />
+                          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[#EAEAEA]">
+                            {part.toolInvocation.args?.agent_type || "RESEARCHER"} (Sub-Agent)
+                          </span>
+                        </div>
+                        {part.toolInvocation.state === "result" ? (
+                          <div className="text-sm text-muted-foreground prose prose-invert prose-p:leading-relaxed prose-pre:bg-black/50">
+                            {part.toolInvocation.result?.response || "No response."}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="size-2 rounded-full bg-signal animate-pulse" />
+                            <Shimmer>Consulting {part.toolInvocation.args?.agent_type || "Researcher"}...</Shimmer>
+                          </div>
+                        )}
+                      </div>
                     ) : null,
                   )}
                 </MessageContent>
                 {message.role === "assistant" && (
                   <>
-                    {index === messages.length - 1 && !busy && <ProductProposal />}
+                    {!busy && (message.toolInvocations?.some((t: any) => t.toolName === "propose_product") || message.parts?.some((p: any) => p.type === "tool-invocation" && p.toolInvocation.toolName === "propose_product") || message.parts?.some((p: any) => p.type === "text" && /headphone|auralis|nc-7|propose/i.test(p.text))) && <ProductProposal />}
                     <MessageActions>
-                      <MessageAction
-                        tooltip="Copy"
-                        onClick={() =>
-                          navigator.clipboard.writeText(
-                            message.parts
-                              .filter((part) => part.type === "text")
-                              .map((part) => part.text)
-                              .join(""),
-                          )
-                        }
-                      >
-                        <Copy />
-                      </MessageAction>
+                      {message.parts.some((part) => part.type === "text" && part.text.trim() !== "") && (
+                        <MessageAction
+                          tooltip="Copy"
+                          onClick={() =>
+                            navigator.clipboard.writeText(
+                              message.parts
+                                .filter((part) => part.type === "text")
+                                .map((part) => part.text)
+                                .join(""),
+                            )
+                          }
+                        >
+                          <Copy />
+                        </MessageAction>
+                      )}
                       {index === messages.length - 1 && (
                         <MessageAction tooltip="Regenerate" onClick={() => regenerate()}>
                           <RefreshCw />

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Brain, Eraser, Settings2, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Brain, Eraser, Settings2, ShieldCheck, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,36 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useMandateStore } from "./store";
+import { subscribeToWebLLM, getWebLLMEngine } from "@/lib/ai/webllm";
+
 export function ChatSettingsDrawer() {
+  const localAI = useMandateStore((state) => state.localAI);
+  const setLocalAI = useMandateStore((state) => state.setLocalAI);
+  const [initProgress, setInitProgress] = useState(0);
+  const [initText, setInitText] = useState("");
+  
+  useEffect(() => {
+    return subscribeToWebLLM((progress, text) => {
+      setInitProgress(progress);
+      setInitText(text);
+    });
+  }, []);
+
+  const handleLocalAIToggle = async (checked: boolean) => {
+    setLocalAI(checked);
+    if (checked) {
+      toast("Initializing WebLLM Engine...");
+      try {
+        await getWebLLMEngine();
+        toast.success("WebLLM Engine Ready!");
+      } catch (error) {
+        toast.error("Failed to initialize WebLLM");
+        setLocalAI(false);
+      }
+    }
+  };
+
   const [creativity, setCreativity] = useState([35]);
   const [memory, setMemory] = useState(true);
   const [tools, setTools] = useState({ search: true, compare: true, purchase: false });
@@ -41,6 +70,31 @@ export function ChatSettingsDrawer() {
           </SheetDescription>
         </SheetHeader>
         <div className="mt-7 space-y-7">
+          <SettingGroup title="Engine">
+            <Toggle
+              label="Local WebGPU SLM"
+              checked={localAI}
+              onCheckedChange={handleLocalAIToggle}
+            />
+            {localAI && initProgress < 1 && (
+              <div className="flex items-center gap-3 rounded-md bg-muted/50 p-3 text-xs">
+                <Download className="size-4 animate-bounce text-muted-foreground" />
+                <div className="flex-1 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Downloading model...</span>
+                    <span>{Math.round(initProgress * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                    <div 
+                      className="h-full bg-signal transition-all duration-300" 
+                      style={{ width: `${initProgress * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate">{initText}</p>
+                </div>
+              </div>
+            )}
+          </SettingGroup>
           <SettingGroup title="Model & response">
             <Field label="Model">
               <Select defaultValue="astra">
