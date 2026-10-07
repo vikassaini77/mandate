@@ -12,3 +12,4 @@ class Decision(BaseModel):
     rule_id: str
     reason: str
     details: Optional[dict] = None
+    audit_hash: Optional[str] = None

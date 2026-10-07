@@ -206,5 +206,18 @@ def evaluate(
             loop.create_task(monitor.emit_threat(payload))
         except RuntimeError:
             pass # Ignore if there is no running event loop
+
+    # Write the immutable decision to the cryptographic audit chain
+    from packages.database.hash_chain import global_audit_chain
+    audit_payload = {
+        "event": "POLICY_EVALUATION",
+        "merchant": proposal.merchant,
+        "amount": proposal.amount,
+        "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,
+        "rule_id": decision.rule_id,
+        "ml_risk_score": proposal.ml_risk_score,
+        "timestamp": now.isoformat()
+    }
+    decision.audit_hash = global_audit_chain.add_record(audit_payload)
             
     return decision
