@@ -1,6 +1,7 @@
-import os
-import httpx
 import logging
+import os
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -8,7 +9,7 @@ class SlackHITLService:
     def __init__(self):
         self.webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
 
-    async def request_approval(self, transaction_id: str, amount: float, merchant: str, reason: str):
+    async def request_approval(self, transaction_id: str, amount: float, merchant: str, reason: str):  # noqa: E501
         """
         Sends an interactive message to Slack for Human-in-the-Loop approval.
         """

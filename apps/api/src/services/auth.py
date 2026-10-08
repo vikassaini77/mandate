@@ -1,10 +1,12 @@
-from fastapi import Depends, HTTPException, Security, Request
-from fastapi.security.api_key import APIKeyHeader
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional, List
-from enum import Enum
 import os
-from apps.api.src.config.security import decode_token, constant_time_compare
+from enum import Enum
+from typing import List, Optional
+
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security.api_key import APIKeyHeader
+
+from apps.api.src.config.security import constant_time_compare, decode_token
 
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 security = HTTPBearer(auto_error=False)

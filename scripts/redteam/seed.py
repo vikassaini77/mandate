@@ -142,7 +142,7 @@ for index in range(240):
             "ruleId": "PAYPAL-WEBHOOK",
             "displayTime": displayTime,
             "merchant": "PayPal Sandbox (Webhook)",
-            "item": f"Webhook Capture Confirmed",
+            "item": "Webhook Capture Confirmed",
             "category": "System",
             "amount": amount,
             "decision": "approved",

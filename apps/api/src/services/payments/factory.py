@@ -1,10 +1,12 @@
 import os
+
 from apps.api.src.services.payments.gateway import PaymentGateway
 from apps.api.src.services.payments.paypal_adapter import PayPalAdapter
 
+
 class PaymentGatewayFactory:
     """
-    Factory to retrieve the appropriate PaymentGateway based on tenant configuration or environment variables.
+    Factory to retrieve the appropriate PaymentGateway based on tenant configuration or environment variables.  # noqa: E501
     """
     
     @classmethod

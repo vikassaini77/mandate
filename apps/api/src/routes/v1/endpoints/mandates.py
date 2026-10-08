@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
-from typing import Optional, List, Dict
-from apps.api.src.services.auth import get_current_principal, require_roles, Principal, Role
-from packages.database.mandate import MandateState, RuleConfig
+from typing import Dict
+
+from fastapi import APIRouter, Depends, HTTPException
 from packages.database.hash_chain import global_audit_chain
+from packages.database.mandate import MandateState, RuleConfig
+
+from apps.api.src.services.auth import Principal, Role, get_current_principal, require_roles
 
 router = APIRouter()
 
@@ -16,8 +18,14 @@ _MOCK_MANDATES: Dict[str, MandateState] = {
 }
 
 @router.get('/')
-async def list_mandates(skip: int = 0, limit: int = 100, principal: Principal = Depends(get_current_principal)): 
+async def list_mandates(skip: int = 0, limit: int = 100, principal: Principal = Depends(get_current_principal)):   # noqa: E501
     return {"data": list(_MOCK_MANDATES.keys())}
+
+@router.get('/{mandate_id}')
+async def get_mandate(mandate_id: str):
+    if mandate_id not in _MOCK_MANDATES:
+        raise HTTPException(status_code=404, detail="Mandate not found")
+    return _MOCK_MANDATES[mandate_id].model_dump()
 
 @router.post('/{mandate_id}/kill')
 async def kill_switch(
@@ -34,7 +42,7 @@ async def kill_switch(
     mandate.kill_switch_engaged = True
     mandate.is_active = False
     
-    return {"status": "success", "message": f"Agent {mandate_id} has been KILLED. All network and payment access revoked."}
+    return {"status": "success", "message": f"Agent {mandate_id} has been KILLED. All network and payment access revoked."}  # noqa: E501
 
 @router.post('/{mandate_id}/activate')
 async def activate_mandate(
@@ -90,3 +98,4 @@ async def simulate_mandate(
             "impact_warning": "High impact!" if blocked_count > approved_count else "Low impact."
         }
     }
+

@@ -1,8 +1,9 @@
-import os
 import json
 import logging
-import pandas as pd
+import os
+
 from sklearn.metrics import confusion_matrix
+
 from packages.ml.manager import MLManager
 
 logging.basicConfig(level=logging.INFO)

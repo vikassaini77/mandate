@@ -334,7 +334,7 @@ export function LandingPage() {
             <span>Agent spending, under control.</span>
             <span>&bull;</span>
             <a href="https://github.com/Sakshamp19" target="_blank" rel="noreferrer" className="hover:text-white transition-none">
-              Built by Saksham & Vikas
+              Built by Saksham, Vikas, & Prashant Swami
             </a>
           </div>
           <Link to="/auth" className="px-4 py-2 border border-[#2A2A2A] hover:bg-[#FF0000] hover:text-white hover:border-[#FF0000] transition-none">

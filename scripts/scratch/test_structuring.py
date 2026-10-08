@@ -1,10 +1,11 @@
 import asyncio
 from datetime import datetime
+
+from apps.api.src.services.policy.engine import evaluate
 from packages.database.mandate import MandateState, RuleConfig
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
-from packages.database.verdict import Verdict
-from apps.api.src.services.policy.engine import evaluate
+
 
 async def main():
     mandate = MandateState(

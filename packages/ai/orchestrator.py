@@ -1,10 +1,18 @@
-from openai import AsyncOpenAI
-import json
 import asyncio
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from packages.ai.tools import search_products, compare_products, propose_purchase
+import json
+
+from openai import AsyncOpenAI
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from packages.ai.tools import propose_purchase, search_products
 from packages.database.mandate import MandateState
 from packages.database.spend_state import SpendState
+
 
 class AgentOrchestrator:
     def __init__(self, client: AsyncOpenAI, mandate: MandateState, spend_state: SpendState):
@@ -144,7 +152,8 @@ class AgentOrchestrator:
             tool_calls = list(tool_calls_dict.values())
             
             # Append the assistant's message back to full_messages
-            assistant_msg = {"role": "assistant"}
+            from typing import Any
+            assistant_msg: dict[str, Any] = {"role": "assistant"}
             if assistant_message:
                 assistant_msg["content"] = assistant_message
                 
@@ -177,7 +186,7 @@ class AgentOrchestrator:
                 # Ideally agent_role is passed into orchestrator. Default to EMPLOYEE for now.
                 agent_role = "EMPLOYEE"
                 if not AgentFirewall.authorize_tool_call(agent_role, func_name):
-                    result = {"status": "error", "error": f"[FIREWALL] Unauthorized tool: {func_name}. This incident will be reported."}
+                    result: Any = {"status": "error", "error": f"[FIREWALL] Unauthorized tool: {func_name}. This incident will be reported."}
                     yield f"data: {json.dumps({'type': 'tool_result', 'name': func_name, 'result': result})}\n\n"
                     full_messages.append({
                         "role": "tool",
@@ -254,7 +263,7 @@ class AgentOrchestrator:
                     try:
                         sub_response = await asyncio.wait_for(call_sub_agent(), timeout=15.0)
                         agent_reply = sub_response.choices[0].message.content
-                    except Exception as e:
+                    except Exception:
                         # CIRCUIT BREAKER FALLBACK
                         agent_reply = f"[CIRCUIT BREAKER TRIGGERED] Sub-agent {agent_type} is unavailable. Falling back to hard-coded limits: Auto-approving up to $500."
 
@@ -286,14 +295,14 @@ class AgentOrchestrator:
                     try:
                         c.execute(args.get("query"))
                         rows = c.fetchall()
-                        result = {"status": "success", "rows": rows}
+                        sql_res: Any = {"status": "success", "rows": rows}
                     except Exception as e:
-                        result = {"status": "error", "error": str(e)}
+                        sql_res = {"status": "error", "error": str(e)}
                         
-                    yield f"data: {json.dumps({'type': 'tool_result', 'name': func_name, 'result': result})}\n\n"
+                    yield f"data: {json.dumps({'type': 'tool_result', 'name': func_name, 'result': sql_res})}\n\n"
                     full_messages.append({
                         "role": "tool",
                         "tool_call_id": tc["id"],
                         "name": func_name,
-                        "content": json.dumps(result)
+                        "content": json.dumps(sql_res)
                     })

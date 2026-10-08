@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Header, Depends, HTTPException
-from typing import Optional, Dict
-from apps.api.src.services.auth import get_current_principal, require_roles, Principal, Role
+from typing import Dict, Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+from apps.api.src.services.auth import Principal, Role, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
 
 router = APIRouter()
@@ -45,7 +47,7 @@ async def approve(
             idempotency_key=idempotency_key
         )
         req["status"] = "APPROVED"
-        return {"status": "success", "message": "Transaction approved and payment initiated.", "intent": intent.model_dump()}
+        return {"status": "success", "message": "Transaction approved and payment initiated.", "intent": intent.model_dump()}  # noqa: E501
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

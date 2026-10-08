@@ -1,9 +1,11 @@
 import uuid
-from typing import Dict, Any
+from typing import Any, Dict
+
 from apps.api.src.services.paypal.client import paypal_client
 from apps.api.src.services.paypal.errors import PayPalOrderError
 
-async def create_order(amount_cents: int, currency: str, reference_id: str, idempotency_key: str = None) -> Dict[str, Any]:
+
+async def create_order(amount_cents: int, currency: str, reference_id: str, idempotency_key: str = None) -> Dict[str, Any]:  # noqa: E501
     """
     Creates a PayPal Order with INTENT = CAPTURE.
     Amount must be converted from cents to string decimal format (e.g., 1050 -> '10.50').
@@ -53,7 +55,7 @@ async def capture_order(order_id: str, idempotency_key: str = None) -> Dict[str,
         )
         return response
     except Exception as e:
-        raise PayPalOrderError(f"Failed to capture order {order_id}: {str(e)}", getattr(e, 'status_code', 500))
+        raise PayPalOrderError(f"Failed to capture order {order_id}: {str(e)}", getattr(e, 'status_code', 500))  # noqa: E501
 
 async def get_order(order_id: str) -> Dict[str, Any]:
     """
@@ -66,9 +68,9 @@ async def get_order(order_id: str) -> Dict[str, Any]:
         )
         return response
     except Exception as e:
-        raise PayPalOrderError(f"Failed to fetch order {order_id}: {str(e)}", getattr(e, 'status_code', 500))
+        raise PayPalOrderError(f"Failed to fetch order {order_id}: {str(e)}", getattr(e, 'status_code', 500))  # noqa: E501
 
-async def refund_capture(capture_id: str, idempotency_key: str = None, amount_cents: int = None, currency: str = None) -> Dict[str, Any]:
+async def refund_capture(capture_id: str, idempotency_key: str = None, amount_cents: int = None, currency: str = None) -> Dict[str, Any]:  # noqa: E501
     """
     Refunds a captured payment.
     """
@@ -91,4 +93,4 @@ async def refund_capture(capture_id: str, idempotency_key: str = None, amount_ce
         )
         return response
     except Exception as e:
-        raise PayPalOrderError(f"Failed to refund capture {capture_id}: {str(e)}", getattr(e, 'status_code', 500))
+        raise PayPalOrderError(f"Failed to refund capture {capture_id}: {str(e)}", getattr(e, 'status_code', 500))  # noqa: E501

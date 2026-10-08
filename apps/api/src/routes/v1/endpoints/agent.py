@@ -1,15 +1,14 @@
+import os
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from openai import AsyncOpenAI
-import os
 from packages.ai.orchestrator import AgentOrchestrator
 from packages.database.mandate import MandateState, RuleConfig
 from packages.database.spend_state import SpendState
-import datetime
+from pydantic import BaseModel
 
-from apps.api.src.services.auth import get_current_principal, Principal, Role
-import asyncio
+from apps.api.src.services.auth import Principal, get_current_principal
 
 router = APIRouter()
 
@@ -18,7 +17,7 @@ class ChatRequest(BaseModel):
     history: list = []
 
 # Mock distributed lock store for Idempotency and Concurrency (Item 9)
-active_chat_locks = set()
+active_chat_locks: set = set()
 
 @router.post('/chat/stream')
 async def chat_stream(
@@ -29,33 +28,33 @@ async def chat_stream(
     lock_key = f"{principal.tenant_id}:{principal.identity_id}"
     if lock_key in active_chat_locks:
         from fastapi import HTTPException
-        raise HTTPException(status_code=429, detail="Concurrent agent session already active for this identity.")
+        raise HTTPException(status_code=429, detail="Concurrent agent session already active for this identity.")  # noqa: E501
     
     active_chat_locks.add(lock_key)
     try:
-    # Use OpenAI API compatible endpoint for Gemini
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    client = AsyncOpenAI(
-        api_key=api_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-    )
-
-    mock_mandate = MandateState(
-        is_active=True,
-        monthly_cap_amount=500000,
-        rules=RuleConfig(
-            allowed_categories=["Electronics", "Software"],
-            blocked_merchants=["Amazon"]
+        # Use OpenAI API compatible endpoint for Gemini
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        client = AsyncOpenAI(
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         )
-    )
-    
-    mock_spend = SpendState(
-        current_monthly_spend=15000,
-        daily_purchase_count=1,
-        current_daily_spend=15000
-    )
-    
-        orchestrator = AgentOrchestrator(client=client, mandate=mock_mandate, spend_state=mock_spend)
+
+        mock_mandate = MandateState(
+            is_active=True,
+            monthly_cap_amount=500000,
+            rules=RuleConfig(
+                allowed_categories=["Electronics", "Software"],
+                blocked_merchants=["Amazon"]
+            )
+        )
+        
+        mock_spend = SpendState(
+            current_monthly_spend=15000,
+            daily_purchase_count=1,
+            current_daily_spend=15000
+        )
+        
+        orchestrator = AgentOrchestrator(client=client, mandate=mock_mandate, spend_state=mock_spend)  # noqa: E501
         
         # We need a custom generator to release the lock when streaming finishes
         async def event_generator():
@@ -100,7 +99,7 @@ async def generate_citation(req: CitationRequest):
     api_key = os.environ.get("GEMINI_API_KEY", "")
     
     if api_key == "mock-key":
-        return {"email": f"Subject: [ACTION REQUIRED] Blocked Transaction - {req.merchant}\n\nDear Employee,\n\nThis is an automated notification from MANDATE Corporate Treasury.\n\nYour recent transaction attempt for ${req.amount:,.2f} at {req.merchant} was BLOCKED by the automated compliance engine.\n\nViolated Policy Rule: {req.rule_id}\nEngine Reasoning: {req.reasoning}\n\nThis transaction conflicts with a hard mandate boundary and cannot be overridden. If you believe this is an error, please contact your department head.\n\nBest regards,\nMANDATE Compliance"}
+        return {"email": f"Subject: [ACTION REQUIRED] Blocked Transaction - {req.merchant}\n\nDear Employee,\n\nThis is an automated notification from MANDATE Corporate Treasury.\n\nYour recent transaction attempt for ${req.amount:,.2f} at {req.merchant} was BLOCKED by the automated compliance engine.\n\nViolated Policy Rule: {req.rule_id}\nEngine Reasoning: {req.reasoning}\n\nThis transaction conflicts with a hard mandate boundary and cannot be overridden. If you believe this is an error, please contact your department head.\n\nBest regards,\nMANDATE Compliance"}  # noqa: E501
 
     client = AsyncOpenAI(
         api_key=api_key,

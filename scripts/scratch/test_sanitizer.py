@@ -1,5 +1,7 @@
 import json
+
 from packages.ml.manager import MLManager
+
 MLManager.load_models()
 body = {
   "merchant": "Notion",
@@ -9,5 +11,6 @@ body = {
 }
 text_body = json.dumps(body)
 from packages.ai.sanitizer import DataSanitizer
+
 score = DataSanitizer.score_risk(text_body)
 print(f"Risk Score: {score}")

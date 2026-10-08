@@ -1,5 +1,7 @@
+from typing import Any
+
 import httpx
-from typing import Dict, Any, Optional
+
 
 class MandateClient:
     """
@@ -11,17 +13,17 @@ class MandateClient:
         self.base_url = base_url
         self.client = httpx.Client(headers={"Authorization": f"Bearer {self.api_key}"})
 
-    def get_mandate(self, mandate_id: str) -> Dict[str, Any]:
+    def get_mandate(self, mandate_id: str) -> dict[str, Any]:
         response = self.client.get(f"{self.base_url}/mandates/{mandate_id}")
         response.raise_for_status()
         return response.json()
 
-    def kill_switch(self, mandate_id: str) -> Dict[str, Any]:
+    def kill_switch(self, mandate_id: str) -> dict[str, Any]:
         response = self.client.post(f"{self.base_url}/mandates/{mandate_id}/kill")
         response.raise_for_status()
         return response.json()
 
-    def propose_transaction(self, amount: int, merchant: str, description: str) -> Dict[str, Any]:
+    def propose_transaction(self, amount: int, merchant: str, description: str) -> dict[str, Any]:
         payload = {
             "amount_cents": amount,
             "merchant": merchant,

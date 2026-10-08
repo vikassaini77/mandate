@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from datetime import datetime, timezone
 
 from apps.api.src.config.security import (
-    get_password_hash, verify_password, create_access_token, create_refresh_token,
-    decode_token, generate_totp_secret, verify_totp
+    create_access_token,
+    create_refresh_token,
+    decode_token,
 )
-from packages.database.db.models import User, Session
+
+
 # In a real app we'd import get_db from deps, assuming it's available
 # from apps.api.src.deps import get_db
 # For skeleton, we'll mock the dependency injection signature
@@ -28,14 +29,14 @@ class TokenResponse(BaseModel):
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(req: SignupRequest, db: AsyncSession = Depends(get_db)):
-    # 1. Validation and existence check (No enumeration: return 201 even if exists, but silently drop/email them)
+    # 1. Validation and existence check (No enumeration: return 201 even if exists, but silently drop/email them)  # noqa: E501
     # 2. Hash password (Argon2id)
     # 3. Save User
     # 4. Send verification email via EmailService
     return {"message": "If the email is valid, a verification link has been sent."}
 
 @router.post("/login", response_model=TokenResponse)
-async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):  # noqa: E501
     # 1. Look up user by form_data.username (email)
     # 2. Verify password with constant-time comparison via passlib
     # 3. Check if 2FA is required

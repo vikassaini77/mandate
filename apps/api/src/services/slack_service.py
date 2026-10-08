@@ -1,6 +1,7 @@
 import os
+
 import httpx
-import json
+
 
 class SlackService:
     @staticmethod
@@ -22,7 +23,7 @@ class SlackService:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*Amount:* ${(amount / 100):.2f}\n*Rule Cited:* {rule_cited}\n*AI Justification:* {justification}"
+                        "text": f"*Amount:* ${(amount / 100):.2f}\n*Rule Cited:* {rule_cited}\n*AI Justification:* {justification}"  # noqa: E501
                     }
                 },
                 {

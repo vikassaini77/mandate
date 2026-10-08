@@ -23,7 +23,7 @@ async def onboard_customer(email: str, company_name: str):
     """
     return {
         "status": "success",
-        "message": f"Provisioned {company_name} workspace, generated API keys, and initialized Agent Sandbox.",
+        "message": f"Provisioned {company_name} workspace, generated API keys, and initialized Agent Sandbox.",  # noqa: E501
         "api_key": "mdt_live_new_123"
     }
 

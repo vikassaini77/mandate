@@ -1,10 +1,12 @@
 import asyncio
-from datetime import datetime, timezone, timedelta
-from packages.ml.manager import MLManager
+from datetime import datetime
+
+from apps.api.src.services.policy.engine import evaluate
 from packages.database.mandate import MandateState, RuleConfig
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
-from apps.api.src.services.policy.engine import evaluate
+from packages.ml.manager import MLManager
+
 
 async def run_test():
     # 1. Load the seeded models
@@ -18,7 +20,7 @@ async def run_test():
         daily_purchase_count_cap=100,
         daily_amount_cap=1000000,
         allowed_time_windows=[],
-        auto_approve_limit=500000 # 
+        auto_approve_limit=500000
     )
     mandate = MandateState(
         is_active=True,

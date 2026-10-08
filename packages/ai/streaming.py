@@ -1,7 +1,9 @@
 import asyncio
 import json
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from anthropic import AsyncAnthropic
+
 
 async def stream_agent_events(
     client: AsyncAnthropic,

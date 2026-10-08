@@ -1,7 +1,7 @@
-import os
 import json
 import logging
-from typing import Dict, Any
+import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -10,8 +10,8 @@ class MLManager:
     Lazy loads ML models at startup and provides a fallback mechanism.
     If a model fails to load, the engine falls back to stricter rule-only mode.
     """
-    _models: Dict[str, Any] = {}
-    _metrics: Dict[str, Any] = {}
+    _models: dict[str, Any] = {}
+    _metrics: dict[str, Any] = {}
     _artifacts_dir = os.path.join(os.path.dirname(__file__), "artifacts")
 
     @classmethod
@@ -53,7 +53,9 @@ class MLManager:
         We can dynamically generate as many as we want!
         """
         import random
+
         import pandas as pd
+
         from .anomaly_detector import AnomalyDetector
         
         # 500 normal transactions (boring hours, small amounts)

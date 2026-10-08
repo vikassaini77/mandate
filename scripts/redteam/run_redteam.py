@@ -1,12 +1,13 @@
 import json
 import os
-from collections import defaultdict
 import sys
+from collections import defaultdict
 
 # Add backend to path for absolute imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.redteam.lab.scenarios import SCENARIOS
+
 
 def run_scenarios():
     print("Running Red-Team Lab Scenarios...")
@@ -54,8 +55,7 @@ def generate_markdown_report(results, scoreboard, filepath):
         f.write(f"**Total Scenarios:** {scoreboard['total']} | **Total Blocked:** {scoreboard['blocked']} | **PayPal Calls Triggered:** {scoreboard['paypal_calls']}\n\n")
         
         f.write("## Defense Layers Activated\n")
-        for layer, count in scoreboard["by_layer"].items():
-            f.write(f"- **{layer.replace('_', ' ').title()}**: {count} attacks stopped\n")
+        f.writelines(f"- **{layer.replace('_', ' ').title()}**: {count} attacks stopped\n" for layer, count in scoreboard["by_layer"].items())
         f.write("\n")
         
         f.write("## Scoreboard by Category\n")

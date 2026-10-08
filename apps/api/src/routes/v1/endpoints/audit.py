@@ -1,7 +1,9 @@
+import time
+
 from fastapi import APIRouter, Depends
 from packages.database.hash_chain import global_audit_chain
-from apps.api.src.services.auth import get_current_principal, require_roles, Principal, Role
-import time
+
+from apps.api.src.services.auth import Principal, Role, require_roles
 
 router = APIRouter()
 
@@ -25,8 +27,8 @@ async def export_audit(
 async def seed_chain(principal: Principal = Depends(require_roles([Role.ADMIN]))):
     global_audit_chain.add_record({"event": "SYSTEM_BOOT", "timestamp": time.time()})
     global_audit_chain.add_record({"event": "POLICY_EVAL", "decision": "APPROVE", "amount": 14500})
-    global_audit_chain.add_record({"event": "API_EXECUTE", "provider": "PAYPAL", "status": "SUCCESS"})
-    return {"message": "Added 3 secure blocks to the chain.", "chain_length": len(global_audit_chain.chain)}
+    global_audit_chain.add_record({"event": "API_EXECUTE", "provider": "PAYPAL", "status": "SUCCESS"})  # noqa: E501
+    return {"message": "Added 3 secure blocks to the chain.", "chain_length": len(global_audit_chain.chain)}  # noqa: E501
 
 @router.post('/tamper-chain')
 async def tamper_chain(principal: Principal = Depends(require_roles([Role.ADMIN]))):
@@ -43,5 +45,5 @@ async def verify_chain(principal: Principal = Depends(require_roles([Role.ADMIN,
         "status": "success",
         "intact": is_valid,
         "blocks_verified": len(global_audit_chain.chain),
-        "message": "Merkle-tree cryptographic chain verified successfully." if is_valid else "TAMPERING DETECTED in the audit ledger!"
+        "message": "Merkle-tree cryptographic chain verified successfully." if is_valid else "TAMPERING DETECTED in the audit ledger!"  # noqa: E501
     }

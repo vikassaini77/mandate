@@ -1,8 +1,9 @@
-import os
-import faiss
-import numpy as np
 import json
+import os
+
+import faiss
 from sentence_transformers import SentenceTransformer
+
 
 class TwoTowerRecommender:
     """

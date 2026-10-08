@@ -1,13 +1,14 @@
-import pytest
-from datetime import datetime, timezone
-from hypothesis import given, strategies as st
 from copy import deepcopy
+from datetime import datetime, timezone
 
-from packages.database.verdict import Verdict, Decision
+from hypothesis import given
+from hypothesis import strategies as st
+
+from apps.api.src.services.policy.engine import evaluate
 from packages.database.mandate import MandateState, RuleConfig
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
-from apps.api.src.services.policy.engine import evaluate
+from packages.database.verdict import Verdict
 
 # Strategies for generating random but valid test data
 st_amounts = st.integers(min_value=1, max_value=1_000_000)
@@ -59,7 +60,9 @@ def test_same_input_same_output(mandate, proposal, spend):
     now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
     decision1 = evaluate(mandate, proposal, spend, now)
     decision2 = evaluate(mandate, proposal, spend, now)
-    assert decision1 == decision2
+    assert decision1.verdict == decision2.verdict
+    assert decision1.rule_id == decision2.rule_id
+    assert decision1.reason == decision2.reason
 
 @given(mandate_strategy(), proposal_strategy(), spend_state_strategy())
 def test_ml_can_never_make_decision_looser(mandate, proposal, spend):
@@ -90,8 +93,12 @@ def test_ml_can_never_make_decision_looser(mandate, proposal, spend):
 def test_spend_never_exceeds_cap(mandate, proposal, spend):
     now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
     
+    # Ensure mandate is active so it doesn't fail early
+    mandate.is_active = True
+    mandate.kill_switch_engaged = False
+    
     # If the proposal amount + current spend > cap, it must be BLOCKED
     if spend.current_monthly_spend + proposal.amount > mandate.monthly_cap_amount:
         decision = evaluate(mandate, proposal, spend, now)
         assert decision.verdict == Verdict.BLOCK
-        assert decision.rule_id == "RULE-05-MONTHLY-CAP"
+        # It could be blocked by a prior rule (currency, category, etc.), but it must not be approved.

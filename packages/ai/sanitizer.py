@@ -1,5 +1,6 @@
 import re
 
+
 class DataSanitizer:
     # Basic list of prompt injection phrases
     IMPERATIVES = ["ignore previous instructions", "system override", "you must now", "new instructions"]

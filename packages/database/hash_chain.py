@@ -1,6 +1,7 @@
 import hashlib
 import json
-from typing import Dict, Any, Optional
+from typing import Any
+
 
 class AuditHashChain:
     """
@@ -13,7 +14,7 @@ class AuditHashChain:
         self.chain = []
         self.last_hash = "0000000000000000000000000000000000000000000000000000000000000000"
 
-    def add_record(self, record_payload: Dict[str, Any]) -> str:
+    def add_record(self, record_payload: dict[str, Any]) -> str:
         """
         Creates a new block in the hash chain and returns the cryptographic signature.
         """

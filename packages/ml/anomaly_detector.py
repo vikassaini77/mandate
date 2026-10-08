@@ -1,7 +1,9 @@
 import os
+
 import joblib
 import pandas as pd
 from sklearn.ensemble import IsolationForest
+
 
 class AnomalyDetector:
     """

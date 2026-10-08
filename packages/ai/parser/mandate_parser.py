@@ -1,15 +1,16 @@
-import json
+
 from anthropic import AsyncAnthropic
 from pydantic import ValidationError
-from typing import Union
+
 from packages.ai.parser.schema import ParsedMandate
+
 
 class MandateParser:
     def __init__(self, client: AsyncAnthropic, model: str = "claude-3-haiku-20240307"):
         self.client = client
         self.model = model
 
-    async def parse(self, raw_text: str) -> Union[ParsedMandate, dict]:
+    async def parse(self, raw_text: str) -> ParsedMandate | dict:
         """
         Parses a raw text into a structured mandate using LLM tool schemas.
         Retries exactly once if validation fails.
@@ -52,7 +53,7 @@ class MandateParser:
             except ValidationError as e:
                 if attempt == 0:
                     # Feed error back for retry
-                    error_msg = f"Validation Error on your JSON output: {str(e)}. Please correct it."
+                    error_msg = f"Validation Error on your JSON output: {e!s}. Please correct it."
                     messages.append({"role": "assistant", "content": response.content})
                     messages.append({"role": "user", "content": error_msg})
                 else:

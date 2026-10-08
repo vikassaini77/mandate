@@ -1,5 +1,6 @@
 import asyncio
 
+
 class SecurityMonitor:
     _instance = None
     

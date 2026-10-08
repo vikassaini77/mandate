@@ -1,7 +1,8 @@
-import os
-from typing import Dict, Any
+from typing import Any, Dict
+
 from apps.api.src.services.paypal.client import paypal_client
 from apps.api.src.services.paypal.errors import PayPalWebhookVerificationError
+
 
 async def verify_webhook_signature(
     transmission_id: str,
@@ -36,7 +37,7 @@ async def verify_webhook_signature(
         )
         return response.get("verification_status") == "SUCCESS"
     except Exception as e:
-        raise PayPalWebhookVerificationError(f"Failed to verify webhook signature: {str(e)}", getattr(e, 'status_code', 500))
+        raise PayPalWebhookVerificationError(f"Failed to verify webhook signature: {str(e)}", getattr(e, 'status_code', 500))  # noqa: E501
 
 async def handle_webhook_event(event: Dict[str, Any], session, redis_client=None):
     """
@@ -44,7 +45,7 @@ async def handle_webhook_event(event: Dict[str, Any], session, redis_client=None
     In a real implementation, `redis_client` or a DB lock ensures idempotency via event['id'].
     """
     event_type = event.get("event_type")
-    resource = event.get("resource", {})
+    event.get("resource", {})
     
     # 1. Idempotency Check
     event_id = event.get("id")

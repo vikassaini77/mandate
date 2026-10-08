@@ -1,5 +1,5 @@
-import os
 from transformers import pipeline
+
 
 class InjectionClassifier:
     """

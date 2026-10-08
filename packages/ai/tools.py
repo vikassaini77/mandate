@@ -1,10 +1,11 @@
-from typing import List, Dict, Any
-from packages.database.verdict import Verdict, Decision
-from packages.database.proposal import ProposalState
-from packages.database.mandate import MandateState
-from packages.database.spend_state import SpendState
-from apps.api.src.services.policy.engine import evaluate
 from datetime import datetime, timezone
+from typing import Any
+
+from apps.api.src.services.policy.engine import evaluate
+from packages.database.mandate import MandateState
+from packages.database.proposal import ProposalState
+from packages.database.spend_state import SpendState
+from packages.database.verdict import Decision, Verdict
 
 # Dummy catalog for testing/mocking
 CATALOG = {
@@ -13,11 +14,11 @@ CATALOG = {
     "gift-card-001": {"id": "gift-card-001", "name": "Digital Gift Card", "price": 10000, "merchant": "Unknown vendor", "category": "Gift Cards"}
 }
 
-def search_products(query: str, filters: dict = None) -> List[Dict[str, Any]]:
+def search_products(query: str, filters: dict = None) -> list[dict[str, Any]]:
     # Mock implementation of search
     return list(CATALOG.values())
 
-def compare_products(ids: List[str]) -> List[Dict[str, Any]]:
+def compare_products(ids: list[str]) -> list[dict[str, Any]]:
     return [CATALOG[pid] for pid in ids if pid in CATALOG]
 
 def propose_purchase(
@@ -40,7 +41,7 @@ def propose_purchase(
             reason=f"Blocked: Product ID {product_id} not found in verified catalog."
         )
     
-    total_amount = product["price"] * quantity
+    total_amount = float(str(product["price"])) * quantity
     
     proposal = ProposalState(
         id=f"prop-{int(datetime.now().timestamp())}",
@@ -55,6 +56,7 @@ def propose_purchase(
 
 
 import sqlite3
+
 
 def execute_sql_query(query: str) -> dict:
     conn = sqlite3.connect(':memory:')

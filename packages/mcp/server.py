@@ -1,6 +1,8 @@
-import sys
 import json
+import sys
+
 import httpx
+
 
 class MandateMCPServer:
     """
@@ -53,7 +55,7 @@ class MandateMCPServer:
                 res = self.handle_request(req)
                 sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": req.get("id"), **res}) + "\n")
                 sys.stdout.flush()
-            except Exception as e:
+            except Exception:
                 pass
 
 if __name__ == "__main__":

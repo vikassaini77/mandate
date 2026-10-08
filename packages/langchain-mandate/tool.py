@@ -1,7 +1,8 @@
+
+import httpx
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-import httpx
-from typing import Type
+
 
 class ProposeTransactionSchema(BaseModel):
     amount: int = Field(description="The amount in cents")
@@ -15,7 +16,7 @@ class MandateTool(BaseTool):
     """
     name = "mandate_propose_transaction"
     description = "Use this tool to propose a purchase transaction. The transaction will be securely vetted by the Mandate backend engine and human approval center before execution."
-    args_schema: Type[BaseModel] = ProposeTransactionSchema
+    args_schema: type[BaseModel] = ProposeTransactionSchema
     
     api_key: str
     base_url: str = "http://localhost:8000/v1"

@@ -1,4 +1,5 @@
 from packages.ml.manager import MLManager
+
 MLManager.load_models()
 
 anomaly = MLManager._models['anomaly']

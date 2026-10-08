@@ -1,6 +1,13 @@
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from apps.api.src.services.payments.gateway import PaymentGateway, PaymentIntent
-from apps.api.src.services.paypal.orders import create_order, capture_order, get_order, refund_capture
+from apps.api.src.services.paypal.orders import (
+    capture_order,
+    create_order,
+    get_order,
+    refund_capture,
+)
+
 
 class PayPalAdapter(PaymentGateway):
     """
@@ -41,7 +48,7 @@ class PayPalAdapter(PaymentGateway):
         return PaymentIntent(
             id=raw_order.get("id"),
             status=raw_order.get("status"),
-            amount_cents=0, # This might need fetching the order first in a real setup if amount is required.
+            amount_cents=0, # This might need fetching the order first in a real setup if amount is required.  # noqa: E501
             currency="",
             provider_raw=raw_order
         )

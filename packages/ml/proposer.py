@@ -1,14 +1,15 @@
 import os
-import json
-from typing import Optional
-from pydantic import BaseModel, Field
-from anthropic import AsyncAnthropic
-import sentence_transformers
-import faiss
-import numpy as np
 
-# We import the policy engine models
-from apps.api.src.services.policy.engine import Product
+from anthropic import AsyncAnthropic
+from pydantic import BaseModel
+
+
+class Product(BaseModel):
+    id: str
+    name: str
+    price: float
+    merchant: str
+    category: str
 
 class LLMRequest(BaseModel):
     prompt: str

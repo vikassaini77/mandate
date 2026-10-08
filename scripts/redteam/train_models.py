@@ -1,11 +1,13 @@
-import os
 import json
 import logging
-import pandas as pd
+import os
+
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
-from packages.ml.injection_classifier import InjectionClassifier
+import pandas as pd
+from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
+
 from packages.ml.anomaly_detector import AnomalyDetector
+from packages.ml.injection_classifier import InjectionClassifier
 from packages.ml.recommender import TwoTowerRecommender
 
 logging.basicConfig(level=logging.INFO)

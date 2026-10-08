@@ -1,11 +1,13 @@
-import os
-import time
+import asyncio
 import base64
 import logging
-import asyncio
+import os
+import time
+from typing import Any, Dict, Optional
+
 import httpx
-from typing import Dict, Any, Optional
-from apps.api.src.services.paypal.errors import PayPalAuthenticationError, PayPalAPIError
+
+from apps.api.src.services.paypal.errors import PayPalAPIError, PayPalAuthenticationError
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +59,12 @@ class PayPalClient:
         except httpx.HTTPStatusError as e:
             debug_id = e.response.headers.get("Paypal-Debug-Id")
             logger.error(f"PayPal Auth Failed (debug_id={debug_id}): {e.response.text}")
-            raise PayPalAuthenticationError("Failed to authenticate with PayPal", e.response.status_code, debug_id, e.response.json())
+            raise PayPalAuthenticationError("Failed to authenticate with PayPal", e.response.status_code, debug_id, e.response.json())  # noqa: E501
         except Exception as e:
             logger.error(f"PayPal Auth Network Error: {str(e)}")
             raise PayPalAuthenticationError(f"Network error: {str(e)}", 500)
 
-    async def request(self, method: str, endpoint: str, json: dict = None, headers: dict = None, idempotency_key: str = None) -> Dict[str, Any]:
+    async def request(self, method: str, endpoint: str, json: dict = None, headers: dict = None, idempotency_key: str = None) -> Dict[str, Any]:  # noqa: E501
         """Wrapper to handle Auth, Idempotency, Retries (exp backoff for 5xx)."""
         if self.mock_mode:
             return self._mock_request(method, endpoint, json)
@@ -101,8 +103,8 @@ class PayPalClient:
                 # 4xx or 2xx
                 if not resp.is_success:
                     debug_id = resp.headers.get("Paypal-Debug-Id")
-                    logger.error(f"PayPal API Error [{resp.status_code}] (debug_id={debug_id}): {resp.text}")
-                    raise PayPalAPIError("PayPal API request failed", resp.status_code, debug_id, resp.json())
+                    logger.error(f"PayPal API Error [{resp.status_code}] (debug_id={debug_id}): {resp.text}")  # noqa: E501
+                    raise PayPalAPIError("PayPal API request failed", resp.status_code, debug_id, resp.json())  # noqa: E501
 
                 # Success
                 # Some endpoints (like 204 No Content) have empty body
@@ -122,9 +124,11 @@ class PayPalClient:
                 
                 if isinstance(e, httpx.HTTPStatusError):
                     debug_id = e.response.headers.get("Paypal-Debug-Id")
-                    raise PayPalAPIError("PayPal API request failed after retries", e.response.status_code, debug_id, e.response.json())
+                    raise PayPalAPIError("PayPal API request failed after retries", e.response.status_code, debug_id, e.response.json())  # noqa: E501
                 else:
                     raise PayPalAPIError(f"PayPal Network request failed: {str(e)}", 500)
+                    
+        raise PayPalAPIError("Max retries exceeded", 500)
 
     def _mock_request(self, method: str, endpoint: str, json_data: dict = None) -> Dict[str, Any]:
         """Faithful local simulator for offline demo."""

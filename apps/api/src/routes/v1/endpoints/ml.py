@@ -11,11 +11,12 @@ async def seed_ml_model():
     """
     try:
         count = MLManager.seed_anomaly_model()
-        return {"status": "success", "message": f"Isolation Forest seeded with {count} transactions"}
+        return {"status": "success", "message": f"Isolation Forest seeded with {count} transactions"}  # noqa: E501
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 from pydantic import BaseModel
+
 
 class InjectionRequest(BaseModel):
     prompt: str

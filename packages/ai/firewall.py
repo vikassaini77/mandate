@@ -1,7 +1,7 @@
 import logging
-from typing import Dict, Any, Tuple
-from packages.ml.manager import MLManager
+
 from packages.core.pii_masker import PIIMasker
+from packages.ml.manager import MLManager
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class AgentFirewall:
     """
     
     @classmethod
-    def inspect_inbound(cls, text: str) -> Tuple[bool, str, str]:
+    def inspect_inbound(cls, text: str) -> tuple[bool, str, str]:
         """
         Inspects inbound user prompts.
         Returns: (is_blocked, reason, masked_text)

@@ -1,18 +1,18 @@
 import datetime
-from typing import Optional
 
 from sqlalchemy import (
-    Integer, 
-    String, 
-    Boolean, 
-    DateTime, 
-    ForeignKey, 
-    Text, 
-    BigInteger, 
-    JSON
+    JSON,
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
+
 
 class Base(DeclarativeBase):
     pass
@@ -66,15 +66,15 @@ class Proposal(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     merchant: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(255))
-    llm_reasoning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    llm_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 class Verdict(Base, TimestampMixin):
     __tablename__ = "verdicts"
     id: Mapped[int] = mapped_column(primary_key=True)
     proposal_id: Mapped[int] = mapped_column(ForeignKey("proposals.id"), unique=True)
     decision: Mapped[str] = mapped_column(String(50)) # APPROVE, ESCALATE, BLOCK
-    rule_triggered: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    reasoning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rule_triggered: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 class Approval(Base, TimestampMixin):
     __tablename__ = "approvals"
@@ -87,7 +87,7 @@ class Order(Base, TimestampMixin):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
     proposal_id: Mapped[int] = mapped_column(ForeignKey("proposals.id"))
-    paypal_order_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True)
+    paypal_order_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     status: Mapped[str] = mapped_column(String(50))
     amount: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
@@ -101,7 +101,7 @@ class AuditEvent(Base):
     event_type: Mapped[str] = mapped_column(String(255))
     payload: Mapped[dict] = mapped_column(JSON)
     # Hash-chaining for tamper evidence
-    previous_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     current_hash: Mapped[str] = mapped_column(String(64), unique=True)
 
 class Transaction(Base, TimestampMixin):
@@ -139,7 +139,7 @@ class WebhookDelivery(Base, TimestampMixin):
     endpoint_id: Mapped[int] = mapped_column(ForeignKey("webhook_endpoints.id"))
     event_type: Mapped[str] = mapped_column(String(255))
     payload: Mapped[dict] = mapped_column(JSON)
-    status_code: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, default=False)
 
 class RedteamRun(Base, TimestampMixin):
@@ -160,7 +160,7 @@ class SpendLedger(Base, TimestampMixin):
     __tablename__ = "spend_ledger"
     id: Mapped[int] = mapped_column(primary_key=True)
     mandate_id: Mapped[int] = mapped_column(ForeignKey("mandates.id"))
-    transaction_id: Mapped[Optional[int]] = mapped_column(ForeignKey("transactions.id"), nullable=True)
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id"), nullable=True)
     amount: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     balance_after: Mapped[int] = mapped_column(BigInteger)

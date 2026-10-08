@@ -1,7 +1,8 @@
-import httpx
-import logging
 import asyncio
-from typing import Dict, Any
+import logging
+from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,7 @@ class WebhookDispatcher:
     Item 27: Webhooks
     Dispatches real-time events to registered external developer endpoints.
     """
-    _registered_endpoints = []
+    _registered_endpoints: list[str] = []
 
     @classmethod
     def register_endpoint(cls, url: str):
@@ -18,7 +19,7 @@ class WebhookDispatcher:
             cls._registered_endpoints.append(url)
 
     @classmethod
-    async def dispatch(cls, event_type: str, payload: Dict[str, Any]):
+    async def dispatch(cls, event_type: str, payload: dict[str, Any]):
         if not cls._registered_endpoints:
             return
             

@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Header, Depends, HTTPException
 from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+from apps.api.src.services.auth import Principal, Role, get_current_principal, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
-from apps.api.src.services.auth import get_current_principal, require_roles, Principal, Role
 
 router = APIRouter()
 

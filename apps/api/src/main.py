@@ -1,27 +1,26 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from scripts.redteam.seed import (
-    activity, 
-    auditRecords, 
-    products, 
-    purchaseProposals, 
-    redTeamScenarios, 
-    spendData
-)
-from packages.ml.manager import MLManager
-from apps.api.src.routes.v1.router import api_router
-from fastapi.middleware.cors import CORSMiddleware
-import time
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from packages.ai.sanitizer import DataSanitizer
 
-app = FastAPI(title="MANDATE API", description="Backend API for the MANDATE shopping agent policy engine.")
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from packages.ai.sanitizer import DataSanitizer
+from packages.ml.manager import MLManager
+from scripts.redteam.seed import (
+    activity,
+    auditRecords,
+    products,
+    purchaseProposals,
+    redTeamScenarios,
+    spendData,
+)
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from apps.api.src.routes.v1.router import api_router
+
+app = FastAPI(title="MANDATE API", description="Backend API for the MANDATE shopping agent policy engine.")  # noqa: E501
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"  # noqa: E501
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
@@ -38,7 +37,7 @@ class SanitizationMiddleware(BaseHTTPMiddleware):
                 risk_score = DataSanitizer.score_risk(text_body)
                 if risk_score > 0.8:
                     from fastapi.responses import JSONResponse
-                    return JSONResponse(status_code=403, content={"error": "Payload flagged by ML risk scorer: High probability of Prompt Injection or Malicious Override."})
+                    return JSONResponse(status_code=403, content={"error": "Payload flagged by ML risk scorer: High probability of Prompt Injection or Malicious Override."})  # noqa: E501
         return await call_next(request)
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -46,7 +45,7 @@ app.add_middleware(SanitizationMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "https://hkquzuoqtdcjlixrsisb.supabase.co"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "https://hkquzuoqtdcjlixrsisb.supabase.co"],  # noqa: E501
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],

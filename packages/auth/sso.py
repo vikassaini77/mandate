@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class SSOManager:
         return f"https://sso.mandate.app/login/saml?tenant={tenant_id}"
 
     @classmethod
-    def process_saml_callback(cls, saml_response: str) -> Dict[str, Any]:
+    def process_saml_callback(cls, saml_response: str) -> dict[str, Any]:
         """
         Validates the SAML assertion and returns the authenticated Identity.
         """

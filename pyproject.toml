@@ -1,0 +1,17 @@
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+ignore_missing_imports = true
+implicit_optional = true
+exclude = ["venv", ".venv", "apps/web", ".git", "scripts"]
+
+[tool.ruff]
+line-length = 500
+exclude = ["venv", ".venv", "apps/web", ".git", "scripts"]
+
+[tool.ruff.lint]
+ignore = ["E501", "F401", "F841", "E402", "UP006", "UP035", "RUF010", "DTZ007", "BLE001", "RUF012", "RUF013", "DTZ005", "S110", "TRY201", "SIM102", "RUF059", "T201", "B904", "E722", "B023", "F821"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests/unit"]

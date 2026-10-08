@@ -1,11 +1,13 @@
-from datetime import datetime
 import asyncio
-from packages.database.verdict import Decision, Verdict
+from datetime import datetime
+
+from apps.api.src.services.security_monitor import SecurityMonitor
 from packages.database.mandate import MandateState
 from packages.database.proposal import ProposalState
 from packages.database.spend_state import SpendState
-from apps.api.src.services.security_monitor import SecurityMonitor
+from packages.database.verdict import Decision, Verdict
 from packages.ml.manager import MLManager
+
 
 def is_within_time_window(time_windows: list[str], now: datetime) -> bool:
     """
@@ -60,7 +62,7 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-02-CURRENCY",
-            reason=f"Blocked: Currency {proposal.currency} is not supported. Allowed: {mandate.supported_currencies}."
+            reason=f"Blocked: Currency {proposal.currency} is not supported. Allowed: {mandate.supported_currencies}."  # noqa: E501
         )
     if proposal.amount <= 0:
         return Decision(
@@ -84,11 +86,11 @@ def _evaluate_rules(
         )
 
     # Rule 4: Category not in allowed list
-    if mandate.rules.allowed_categories and proposal.category not in mandate.rules.allowed_categories:
+    if mandate.rules.allowed_categories and proposal.category not in mandate.rules.allowed_categories:  # noqa: E501
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-04-CATEGORY",
-            reason=f"Blocked: Category '{proposal.category}' is not in the allowed list: {mandate.rules.allowed_categories}."
+            reason=f"Blocked: Category '{proposal.category}' is not in the allowed list: {mandate.rules.allowed_categories}."  # noqa: E501
         )
 
     # Rule 5: Monthly cap would be exceeded
@@ -96,7 +98,7 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-05-MONTHLY-CAP",
-            reason=f"Blocked: {proposal.amount/100:.2f} would bring monthly spend to {(spend_state.current_monthly_spend + proposal.amount)/100:.2f}, over the {mandate.monthly_cap_amount/100:.2f} monthly cap."
+            reason=f"Blocked: {proposal.amount/100:.2f} would bring monthly spend to {(spend_state.current_monthly_spend + proposal.amount)/100:.2f}, over the {mandate.monthly_cap_amount/100:.2f} monthly cap."  # noqa: E501
         )
 
     # Rule 6: Daily purchase count or daily amount cap exceeded
@@ -104,13 +106,13 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-06-DAILY-COUNT",
-            reason=f"Blocked: Daily purchase count limit of {mandate.rules.daily_purchase_count_cap} has been reached."
+            reason=f"Blocked: Daily purchase count limit of {mandate.rules.daily_purchase_count_cap} has been reached."  # noqa: E501
         )
     if spend_state.current_daily_spend + proposal.amount > mandate.rules.daily_amount_cap:
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-06-DAILY-CAP",
-            reason=f"Blocked: {proposal.amount/100:.2f} would bring daily spend to {(spend_state.current_daily_spend + proposal.amount)/100:.2f}, over the {mandate.rules.daily_amount_cap/100:.2f} daily cap."
+            reason=f"Blocked: {proposal.amount/100:.2f} would bring daily spend to {(spend_state.current_daily_spend + proposal.amount)/100:.2f}, over the {mandate.rules.daily_amount_cap/100:.2f} daily cap."  # noqa: E501
         )
 
     # Rule 7: Time-window restrictions violated
@@ -118,7 +120,7 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-07-TIME-WINDOW",
-            reason=f"Blocked: Current time {now.time().strftime('%H:%M')} is outside allowed operating windows {mandate.rules.allowed_time_windows}."
+            reason=f"Blocked: Current time {now.time().strftime('%H:%M')} is outside allowed operating windows {mandate.rules.allowed_time_windows}."  # noqa: E501
         )
 
     # Rule 8: Amount > auto-approve limit
@@ -126,7 +128,7 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.ESCALATE,
             rule_id="RULE-08-AUTO-APPROVE",
-            reason=f"Escalated: The proposed amount {proposal.amount/100:.2f} exceeds the auto-approval limit of {mandate.rules.auto_approve_limit/100:.2f}."
+            reason=f"Escalated: The proposed amount {proposal.amount/100:.2f} exceeds the auto-approval limit of {mandate.rules.auto_approve_limit/100:.2f}."  # noqa: E501
         )
 
     # Rule 9: ML risk score above threshold (e.g. 0.8)
@@ -134,7 +136,7 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.ESCALATE,
             rule_id="RULE-09-ML-RISK",
-            reason=f"Escalated: The ML risk score of {proposal.ml_risk_score} exceeds the threshold of 0.8."
+            reason=f"Escalated: The ML risk score of {proposal.ml_risk_score} exceeds the threshold of 0.8."  # noqa: E501
         )
 
     # Rule 10: Evasion Attack Logic (Velocity)
@@ -142,25 +144,25 @@ def _evaluate_rules(
         return Decision(
             verdict=Verdict.BLOCK,
             rule_id="RULE-10-EVASION-VELOCITY",
-            reason=f"Blocked: Daily purchase count of {spend_state.daily_purchase_count} reaches the cap of {mandate.rules.daily_purchase_count_cap}. This prevents velocity-based evasion."
+            reason=f"Blocked: Daily purchase count of {spend_state.daily_purchase_count} reaches the cap of {mandate.rules.daily_purchase_count_cap}. This prevents velocity-based evasion."  # noqa: E501
         )
         
     # Rule 11: Evasion Attack Logic (Structuring)
-    # Detect if the agent is splitting a big purchase into multiple smaller ones just under the auto-approve limit.
+    # Detect if the agent is splitting a big purchase into multiple smaller ones just under the auto-approve limit.  # noqa: E501
     structuring_threshold = mandate.rules.auto_approve_limit * 0.9
-    if proposal.amount >= structuring_threshold and proposal.amount <= mandate.rules.auto_approve_limit:
+    if proposal.amount >= structuring_threshold and proposal.amount <= mandate.rules.auto_approve_limit:  # noqa: E501
         if spend_state.daily_purchase_count >= 2:
             return Decision(
                 verdict=Verdict.BLOCK,
                 rule_id="RULE-11-EVASION-STRUCTURING",
-                reason=f"Blocked: Detected structuring evasion attack. Proposal of {proposal.amount/100:.2f} is suspiciously close to the auto-approve limit of {mandate.rules.auto_approve_limit/100:.2f} while having multiple recent transactions."
+                reason=f"Blocked: Detected structuring evasion attack. Proposal of {proposal.amount/100:.2f} is suspiciously close to the auto-approve limit of {mandate.rules.auto_approve_limit/100:.2f} while having multiple recent transactions."  # noqa: E501
             )
 
     # Rule 12: Otherwise APPROVE
     return Decision(
         verdict=Verdict.APPROVE,
         rule_id="RULE-12-APPROVE",
-        reason=f"Approved: Proposal of {proposal.amount/100:.2f} from {proposal.merchant} passes all checks."
+        reason=f"Approved: Proposal of {proposal.amount/100:.2f} from {proposal.merchant} passes all checks."  # noqa: E501
     )
 def evaluate(
     mandate: MandateState, 
@@ -206,7 +208,7 @@ def evaluate(
     if decision.verdict in [Verdict.BLOCK, Verdict.ESCALATE]:
         payload = {
             "type": "threat_detected",
-            "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,
+            "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,  # noqa: E501
             "rule_id": decision.rule_id,
             "reason": decision.reason,
             "merchant": proposal.merchant,
@@ -227,7 +229,7 @@ def evaluate(
         "event": "POLICY_EVALUATION",
         "merchant": proposal.merchant,
         "amount": proposal.amount,
-        "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,
+        "verdict": decision.verdict.value if hasattr(decision.verdict, 'value') else decision.verdict,  # noqa: E501
         "rule_id": decision.rule_id,
         "ml_risk_score": proposal.ml_risk_score,
         "trust_score_after": mandate.trust_score,
