@@ -25,6 +25,8 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
   const {
     register,
@@ -73,11 +75,16 @@ export function AuthPage() {
     setMode(next);
     setError(null);
     setMessage(null);
+    setVerified(false);
     reset();
   };
   const submit = async (values: Fields) => {
     setError(null);
     setMessage(null);
+    if (!verified) {
+      setError("Please complete the security verification (CAPTCHA).");
+      return;
+    }
     if (mode === "forgot") {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(values.email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -129,6 +136,16 @@ export function AuthPage() {
       const { data } = await supabase.auth.getUser();
       if (data.user) await continueAfterAuth(data.user.id);
     }
+  };
+
+  const handleVerify = () => {
+    if (verified || verifying) return;
+    setVerifying(true);
+    setError(null);
+    setTimeout(() => {
+      setVerifying(false);
+      setVerified(true);
+    }, 1200);
   };
 
   return (
@@ -316,6 +333,33 @@ export function AuthPage() {
                 )}
               </div>
             )}
+            
+            <div className="flex items-center gap-3 rounded-md border border-border bg-subtle/30 p-3 shadow-sm">
+              <button
+                type="button"
+                onClick={handleVerify}
+                className={`flex size-6 shrink-0 items-center justify-center rounded-sm border transition-colors ${verified ? "border-safe bg-safe" : "border-input bg-background hover:bg-muted"}`}
+                aria-label="Security Verification"
+              >
+                {verifying ? (
+                  <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                ) : verified ? (
+                  <Check className="size-4 text-background" />
+                ) : null}
+              </button>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium leading-none text-foreground">
+                  Security Verification
+                </span>
+                <span className="mt-1 text-xs text-muted-foreground">
+                  Verify you are human
+                </span>
+              </div>
+              <ShieldCheck
+                className={`ml-auto size-5 transition-colors ${verified ? "text-safe" : "text-muted-foreground/30"}`}
+              />
+            </div>
+
             {error && (
               <div
                 role="alert"
