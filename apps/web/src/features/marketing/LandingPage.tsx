@@ -16,7 +16,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { VerdictBadge } from "@/features/mandate/VerdictBadge";
+
 
 const decisions = [
   { merchant: "Notion", detail: "Team workspace · $96", verdict: "APPROVE", tone: "safe" },

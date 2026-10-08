@@ -199,7 +199,7 @@ export function MandateApp({
   const [mobileNav, setMobileNav] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-  const [intro, setIntro] = useState(initialView === "dashboard");
+  const [intro, setIntro] = useState(false);
   const [dark, setDark] = useState(true);
   const requests = useMandateStore((state) => state.requests);
   const navigate = useNavigate();
