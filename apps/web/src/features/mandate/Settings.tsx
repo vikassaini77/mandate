@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { mandateApi } from "./api";
+import { useMandateStore } from "./store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,8 +66,10 @@ export function Settings() {
   const [intensity, setIntensity] = useState([35]);
   const [twoFactor, setTwoFactor] = useState(false);
   const [apiKey, setApiKey] = useState("mdt_live_••••••••••••6F2A");
-  const [theme, setTheme] = useState("Dark");
-  const [accent, setAccent] = useState("bg-signal");
+  const theme = useMandateStore((s) => s.theme);
+  const setTheme = useMandateStore((s) => s.setTheme);
+  const accent = useMandateStore((s) => s.accent);
+  const setAccent = useMandateStore((s) => s.setAccent);
   return (
     <div className="space-y-6">
       <div>
@@ -354,18 +357,23 @@ export function Settings() {
               </Field>
               <Field label="Accent color">
                 <div className="flex gap-3">
-                  {["bg-signal", "bg-safe", "bg-warning", "bg-danger"].map((color) => (
+                  {[
+                    { id: "red", hex: "#FF0000" }, 
+                    { id: "green", hex: "#00FF00" }, 
+                    { id: "blue", hex: "#0088FF" }, 
+                    { id: "purple", hex: "#8800FF" }
+                  ].map((color) => (
                     <Button
-                      key={color}
-                      variant={color === accent ? "secondary" : "outline"}
+                      key={color.id}
+                      variant={color.hex === accent ? "secondary" : "outline"}
                       size="icon"
-                      aria-label={`${color} accent`}
+                      aria-label={`${color.id} accent`}
                       onClick={() => {
-                        setAccent(color);
+                        setAccent(color.hex);
                         toast.success("Accent color updated");
                       }}
                     >
-                      <span className={`size-4 rounded-full ${color}`} />
+                      <span className="size-4 rounded-full" style={{ backgroundColor: color.hex }} />
                     </Button>
                   ))}
                 </div>

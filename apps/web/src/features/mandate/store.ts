@@ -25,11 +25,19 @@ interface MandateState {
   addMandate: (text: string, limit: number) => void;
   resolveRequest: (id: string, status: Exclude<RequestStatus, "pending">) => void;
   toggleMandate: (id: string) => void;
+  theme: "Dark" | "Light" | "System";
+  setTheme: (theme: "Dark" | "Light" | "System") => void;
+  accent: string;
+  setAccent: (accent: string) => void;
 }
 
 export const useMandateStore = create<MandateState>((set) => ({
   localAI: false,
   setLocalAI: (enabled) => set({ localAI: enabled }),
+  theme: "Dark",
+  setTheme: (theme) => set({ theme }),
+  accent: "#FF0000",
+  setAccent: (accent) => set({ accent }),
   mandates: [
     {
       id: "m-1",

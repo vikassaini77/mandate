@@ -200,8 +200,11 @@ export function MandateApp({
   const [collapsed, setCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [intro, setIntro] = useState(false);
-  const [dark, setDark] = useState(true);
+  
   const requests = useMandateStore((state) => state.requests);
+  const theme = useMandateStore((state) => state.theme);
+  const setTheme = useMandateStore((state) => state.setTheme);
+  const accent = useMandateStore((state) => state.accent);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: profile } = useQuery({
@@ -220,8 +223,26 @@ export function MandateApp({
     setView(initialView);
   }, [initialView]);
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
+    let isDark = true;
+    if (theme === "System") {
+      isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } else {
+      isDark = theme === "Dark";
+    }
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [theme]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const color = accent;
+    
+    root.style.setProperty("--primary", color);
+    root.style.setProperty("--accent", color);
+    root.style.setProperty("--ring", color);
+    root.style.setProperty("--sidebar-accent", color);
+    root.style.setProperty("--signal", color);
+    root.style.setProperty("--gate", color);
+  }, [accent]);
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "k") {
@@ -513,7 +534,7 @@ export function MandateApp({
               <Plus />
               Create mandate<CommandShortcut>M</CommandShortcut>
             </CommandItem>
-            <CommandItem onSelect={() => setDark((value) => !value)}>
+            <CommandItem onSelect={() => setTheme(theme === "Dark" ? "Light" : "Dark")}>
               <Moon />
               Toggle theme<CommandShortcut>T</CommandShortcut>
             </CommandItem>
