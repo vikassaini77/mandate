@@ -29,6 +29,8 @@ interface MandateState {
   setTheme: (theme: "Dark" | "Light" | "System") => void;
   accent: string;
   setAccent: (accent: string) => void;
+  intensity: number[];
+  setIntensity: (intensity: number[]) => void;
 }
 
 export const useMandateStore = create<MandateState>((set) => ({
@@ -38,6 +40,8 @@ export const useMandateStore = create<MandateState>((set) => ({
   setTheme: (theme) => set({ theme }),
   accent: "#FF0000",
   setAccent: (accent) => set({ accent }),
+  intensity: [35],
+  setIntensity: (intensity) => set({ intensity }),
   mandates: [
     {
       id: "m-1",

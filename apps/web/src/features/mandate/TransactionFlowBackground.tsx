@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useMandateStore } from "./store";
 
 type FlowDensity = "ambient" | "quiet";
 type FlowNode = {
@@ -30,6 +31,8 @@ function readPalette(): FlowPalette {
 export function TransactionFlowBackground({ density = "ambient" }: { density?: FlowDensity }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fallback, setFallback] = useState(false);
+  const intensity = useMandateStore((s) => s.intensity[0]);
+  const intensityFactor = intensity / 100;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -133,8 +136,9 @@ export function TransactionFlowBackground({ density = "ambient" }: { density?: F
 
       for (const node of nodes) {
         const priorX = node.x;
-        node.x += node.speed * delta;
-        node.y += Math.sin(now * 0.00032 + node.phase) * delta * 1.5;
+        // scale speed by intensityFactor (1.0 = 100%)
+        node.x += node.speed * delta * (intensityFactor * 2);
+        node.y += Math.sin(now * 0.00032 + node.phase) * delta * 1.5 * (intensityFactor * 2);
         for (const gate of GATE_POSITIONS) {
           const gateX = width * gate;
           if (priorX < gateX && node.x >= gateX) node.flash = 1;
@@ -178,7 +182,7 @@ export function TransactionFlowBackground({ density = "ambient" }: { density?: F
       window.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [density]);
+  }, [density, intensityFactor]);
 
   return (
     <div
@@ -187,6 +191,7 @@ export function TransactionFlowBackground({ density = "ambient" }: { density?: F
         "transaction-flow pointer-events-none fixed inset-0 z-0 overflow-hidden",
         fallback && "transaction-flow-static",
       )}
+      style={{ opacity: Math.max(0.05, intensityFactor) }}
     >
       <canvas
         ref={canvasRef}

@@ -63,13 +63,14 @@ export function Settings() {
   const activateMutation = useMutation({ mutationFn: () => mandateApi.activateMandate('mandate_1'), onSuccess: () => { queryClient.invalidateQueries({queryKey: ['mandate', 'mandate_1']}); toast.success('Agent ACTIVATED'); } });
   const [autonomy, setAutonomy] = useState([62]);
   const [motion, setMotion] = useState(false);
-  const [intensity, setIntensity] = useState([35]);
   const [twoFactor, setTwoFactor] = useState(false);
   const [apiKey, setApiKey] = useState("mdt_live_••••••••••••6F2A");
   const theme = useMandateStore((s) => s.theme);
   const setTheme = useMandateStore((s) => s.setTheme);
   const accent = useMandateStore((s) => s.accent);
   const setAccent = useMandateStore((s) => s.setAccent);
+  const intensity = useMandateStore((s) => s.intensity);
+  const setIntensity = useMandateStore((s) => s.setIntensity);
   return (
     <div className="space-y-6">
       <div>
