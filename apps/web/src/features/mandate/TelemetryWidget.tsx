@@ -55,7 +55,7 @@ export function TelemetryWidget({
   const totalCost = (tokens.prompt / 1000) * COST_PER_1K_PROMPT + (tokens.completion / 1000) * COST_PER_1K_COMPLETION;
 
   return (
-    <div className="absolute top-16 right-4 z-50 flex items-center gap-4 rounded-xl border border-border/50 bg-background/80 px-4 py-2 text-xs backdrop-blur-md shadow-sm">
+    <div className="hidden md:flex items-center gap-4 rounded-md border border-border bg-subtle/50 px-3 py-1.5 text-xs shadow-sm">
       <div className="flex items-center gap-1.5 font-mono text-muted-foreground">
         {mandateData?.kill_switch_engaged ? (
           <><ShieldAlert className="size-3.5 text-destructive animate-pulse" /><span className="text-destructive font-bold">QUARANTINED</span></>

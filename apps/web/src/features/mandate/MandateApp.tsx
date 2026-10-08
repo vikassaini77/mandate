@@ -934,7 +934,6 @@ function ChatSession({
   };
   return (
     <div className="flex h-full min-w-0 overflow-hidden relative">
-      <TelemetryWidget messages={messages} status={status as string} />
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {chatAnnouncement}
       </p>
@@ -1011,7 +1010,7 @@ function ChatSession({
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
         {" "}
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 relative z-10">
           <Button
             variant="ghost"
             size="icon"
@@ -1029,15 +1028,17 @@ function ChatSession({
               <p className="font-mono text-[8px] text-safe">POLICY GATE CONNECTED</p>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto"
-                aria-label="Export conversation"
-              >
-                <Download />
+            <div className="ml-auto flex items-center gap-2">
+              <TelemetryWidget messages={messages} status={status as string} />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Export conversation"
+                >
+                  <Download />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
