@@ -20,15 +20,15 @@
 }
 
 :root {
-  --radius: 0rem; --background: #050505; --foreground: #EAEAEA; --card: #121212; --card-foreground: #EAEAEA;
-  --popover: #121212; --popover-foreground: #EAEAEA; --primary: #FF0000; --primary-foreground: #FFFFFF;
-  --secondary: #121212; --secondary-foreground: #EAEAEA; --muted: #121212; --muted-foreground: #888888;
+  --radius: 0rem; --background: #FFFFFF; --foreground: #050505; --card: #F9F9F9; --card-foreground: #050505;
+  --popover: #FFFFFF; --popover-foreground: #050505; --primary: #FF0000; --primary-foreground: #FFFFFF;
+  --secondary: #F0F0F0; --secondary-foreground: #050505; --muted: #F5F5F5; --muted-foreground: #666666;
   --accent: #FF0000; --accent-foreground: #FFFFFF; --destructive: #FF0000; --destructive-foreground: #FFFFFF;
-  --border: #2A2A2A; --input: #2A2A2A; --ring: #FF0000; --sidebar: #050505; --sidebar-foreground: #EAEAEA; --sidebar-accent: #FF0000; --sidebar-muted: #888888; --sidebar-border: #2A2A2A;
-  --safe: #00FF00; --safe-soft: #004400; --warning: #FFFF00; --warning-soft: #444400; --danger: #FF0000; --danger-soft: #440000; --signal: #FF0000; --signal-foreground: #FFFFFF;
-  --ink: #050505; --ink-foreground: #EAEAEA; --ink-muted: #888888; --ink-border: #2A2A2A; --subtle: #121212; --overlay: rgba(5,5,5,0.8); --paypal: #FF0000; --paypal-foreground: #FFFFFF;
-  --vault: #050505; --vault-raised: #121212; --vault-line: #2A2A2A; --gate: #FF0000; --flow-node: #2A2A2A; --flow-gate: rgba(255,0,0,0.3); --flow-mesh: rgba(42,42,42,0.5);
-  --chart-safe: #00FF00; --chart-danger: #FF0000; --chart-grid: #2A2A2A; --shadow-action: none; --shadow-vault: none; --brand-gradient: none;
+  --border: #E5E5E5; --input: #E5E5E5; --ring: #FF0000; --sidebar: #F9F9F9; --sidebar-foreground: #050505; --sidebar-accent: #FF0000; --sidebar-muted: #666666; --sidebar-border: #E5E5E5;
+  --safe: #00AA00; --safe-soft: #E5FFE5; --warning: #AAAA00; --warning-soft: #FFFFE5; --danger: #AA0000; --danger-soft: #FFE5E5; --signal: #FF0000; --signal-foreground: #FFFFFF;
+  --ink: #FFFFFF; --ink-foreground: #050505; --ink-muted: #666666; --ink-border: #E5E5E5; --subtle: #F9F9F9; --overlay: rgba(255,255,255,0.8); --paypal: #FF0000; --paypal-foreground: #FFFFFF;
+  --vault: #FFFFFF; --vault-raised: #F9F9F9; --vault-line: #E5E5E5; --gate: #FF0000; --flow-node: #E5E5E5; --flow-gate: rgba(255,0,0,0.3); --flow-mesh: rgba(229,229,229,0.5);
+  --chart-safe: #00AA00; --chart-danger: #AA0000; --chart-grid: #E5E5E5; --shadow-action: none; --shadow-vault: none; --brand-gradient: none;
 }
 
 .dark {
