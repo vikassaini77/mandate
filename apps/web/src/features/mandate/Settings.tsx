@@ -65,6 +65,8 @@ export function Settings() {
   const [intensity, setIntensity] = useState([35]);
   const [twoFactor, setTwoFactor] = useState(false);
   const [apiKey, setApiKey] = useState("mdt_live_••••••••••••6F2A");
+  const [theme, setTheme] = useState("Dark");
+  const [accent, setAccent] = useState("bg-signal");
   return (
     <div className="space-y-6">
       <div>
@@ -286,7 +288,7 @@ export function Settings() {
                   </Confirm>
                 </div>
               </div>
-              <Button variant="outline" className="mt-3">
+              <Button variant="outline" className="mt-3" onClick={() => toast.success("New API key generated")}>
                 <Plus />
                 Create API key
               </Button>
@@ -314,7 +316,7 @@ export function Settings() {
                 title="Decision webhook"
                 detail="https://api.example.test/mandate/events"
                 action={
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => toast.success("Webhook test payload sent")}>
                     <Webhook />
                     Test
                   </Button>
@@ -324,7 +326,7 @@ export function Settings() {
                 title="Accounting export"
                 detail="No accounting provider connected"
                 action={
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => toast.success("Connection flow initiated")}>
                     Connect
                   </Button>
                 }
@@ -336,7 +338,14 @@ export function Settings() {
               <Field label="Theme">
                 <div className="grid grid-cols-3 gap-2">
                   {["Dark", "Light", "System"].map((value) => (
-                    <Button key={value} variant={value === "Dark" ? "secondary" : "outline"}>
+                    <Button 
+                      key={value} 
+                      variant={value === theme ? "secondary" : "outline"}
+                      onClick={() => {
+                        setTheme(value);
+                        toast.success(`Theme set to ${value}`);
+                      }}
+                    >
                       <Moon />
                       {value}
                     </Button>
@@ -348,9 +357,13 @@ export function Settings() {
                   {["bg-signal", "bg-safe", "bg-warning", "bg-danger"].map((color) => (
                     <Button
                       key={color}
-                      variant="outline"
+                      variant={color === accent ? "secondary" : "outline"}
                       size="icon"
                       aria-label={`${color} accent`}
+                      onClick={() => {
+                        setAccent(color);
+                        toast.success("Accent color updated");
+                      }}
                     >
                       <span className={`size-4 rounded-full ${color}`} />
                     </Button>
@@ -525,7 +538,7 @@ function Session({
       {current ? (
         <span className="text-[10px] text-safe">Current</span>
       ) : (
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" onClick={() => toast.success("Session revoked")}>
           Revoke
         </Button>
       )}
