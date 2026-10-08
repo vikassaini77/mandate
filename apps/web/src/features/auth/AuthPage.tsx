@@ -386,6 +386,19 @@ export function AuthPage() {
                   : "Sign in"}
               <ArrowRight />
             </Button>
+            {mode !== "forgot" && (
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                By continuing, you agree to MANDATE's{" "}
+                <a href="#" className="underline hover:text-foreground">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="#" className="underline hover:text-foreground">
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            )}
           </form>
           <div className="mt-7 flex min-h-11 items-center justify-center gap-1 text-xs text-muted-foreground">
             {mode === "forgot" ? (
