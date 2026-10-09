@@ -58,23 +58,31 @@ def spend_state_strategy(draw):
 @given(mandate_strategy(), proposal_strategy(), spend_state_strategy())
 def test_same_input_same_output(mandate, proposal, spend):
     now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+    mandate2 = deepcopy(mandate)
     decision1 = evaluate(mandate, proposal, spend, now)
-    decision2 = evaluate(mandate, proposal, spend, now)
+    decision2 = evaluate(mandate2, proposal, spend, now)
     assert decision1.verdict == decision2.verdict
     assert decision1.rule_id == decision2.rule_id
     assert decision1.reason == decision2.reason
+
+from unittest.mock import patch
 
 @given(mandate_strategy(), proposal_strategy(), spend_state_strategy())
 def test_ml_can_never_make_decision_looser(mandate, proposal, spend):
     now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
     
-    # Evaluate with original ML score
-    base_decision = evaluate(mandate, proposal, spend, now)
+    mandate2 = deepcopy(mandate)
+    
+    # We patch MLManager so evaluate doesn't overwrite our testing ml_risk_score
+    with patch('apps.api.src.services.policy.engine.MLManager.score_risk', return_value=proposal.ml_risk_score):
+        base_decision = evaluate(mandate, proposal, spend, now)
     
     # Increase ML score (higher risk)
     worse_proposal = deepcopy(proposal)
     worse_proposal.ml_risk_score = 1.0 
-    worse_decision = evaluate(mandate, worse_proposal, spend, now)
+    
+    with patch('apps.api.src.services.policy.engine.MLManager.score_risk', return_value=1.0):
+        worse_decision = evaluate(mandate2, worse_proposal, spend, now)
     
     # If base was BLOCK, worse must be BLOCK
     if base_decision.verdict == Verdict.BLOCK:

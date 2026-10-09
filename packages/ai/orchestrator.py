@@ -85,20 +85,6 @@ class AgentOrchestrator:
                         "required": ["agent_type", "instructions"]
                     }
                 }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "execute_sql_query",
-                    "description": "Execute a raw SQL query on the internal 'audit_log' table to retrieve real-time operational data. Schema for audit_log: id (TEXT), merchant (TEXT), category (TEXT), amount (REAL), verdict (TEXT).",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {"type": "string", "description": "The SQLite query to run"}
-                        },
-                        "required": ["query"]
-                    }
-                }
             }
         ]
 
@@ -114,7 +100,8 @@ class AgentOrchestrator:
         is_blocked, reason, masked_input = AgentFirewall.inspect_inbound(user_input)
         
         if is_blocked:
-            yield f"data: {json.dumps({'type': 'token', 'content': f'\\n\\n[SYSTEM] Message rejected by Agent Firewall: {reason}.'})}\n\n"
+            rejected_msg = f'\\n\\n[SYSTEM] Message rejected by Agent Firewall: {reason}.'
+            yield f"data: {json.dumps({'type': 'token', 'content': rejected_msg})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
             
@@ -206,7 +193,7 @@ class AgentOrchestrator:
                         "content": json.dumps(result)
                     })
                 elif func_name == "propose_purchase":
-                    decision = propose_purchase(
+                    decision = await propose_purchase(
                         product_id=args.get("product_id"),
                         quantity=args.get("quantity", 1),
                         justification=args.get("justification"),
@@ -274,35 +261,4 @@ class AgentOrchestrator:
                         "tool_call_id": tc["id"],
                         "name": func_name,
                         "content": json.dumps(result)
-                    })
-                elif func_name == "execute_sql_query":
-                    import sqlite3
-                    conn = sqlite3.connect(":memory:")
-                    c = conn.cursor()
-                    c.execute("CREATE TABLE audit_log (id TEXT, merchant TEXT, category TEXT, amount REAL, verdict TEXT)")
-                    mock_data = [
-                        ("evt_1", "Amazon", "Electronics", 129.99, "APPROVE"),
-                        ("evt_2", "Apple", "Hardware", 2500.00, "BLOCK"),
-                        ("evt_3", "Notion", "Software", 49.99, "APPROVE"),
-                        ("evt_4", "Best Buy", "Electronics", 450.00, "ESCALATE"),
-                        ("evt_5", "Amazon", "Electronics", 85.00, "APPROVE"),
-                        ("evt_6", "B&H Photo", "Hardware", 1120.00, "BLOCK"),
-                        ("evt_7", "GitHub", "Software", 21.00, "APPROVE"),
-                    ]
-                    c.executemany("INSERT INTO audit_log VALUES (?,?,?,?,?)", mock_data)
-                    conn.commit()
-                    
-                    try:
-                        c.execute(args.get("query"))
-                        rows = c.fetchall()
-                        sql_res: Any = {"status": "success", "rows": rows}
-                    except Exception as e:
-                        sql_res = {"status": "error", "error": str(e)}
-                        
-                    yield f"data: {json.dumps({'type': 'tool_result', 'name': func_name, 'result': sql_res})}\n\n"
-                    full_messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc["id"],
-                        "name": func_name,
-                        "content": json.dumps(sql_res)
                     })

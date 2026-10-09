@@ -14,8 +14,19 @@ from scripts.redteam.seed import (
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from apps.api.src.routes.v1.router import api_router
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="MANDATE API", description="Backend API for the MANDATE shopping agent policy engine.")  # noqa: E501
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load ML models before accepting traffic
+    MLManager.load_models()
+    yield
+
+app = FastAPI(
+    title="MANDATE API", 
+    description="Backend API for the MANDATE shopping agent policy engine.",
+    lifespan=lifespan
+)  # noqa: E501
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -53,11 +64,7 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
-@app.on_event("startup")
-async def startup_event():
-    # Lazy load ML models at startup
-    # MLManager.load_models()
-    pass
+# Startup logic is now handled by lifespan context manager.
 
 @app.get("/ml/health")
 async def ml_health():

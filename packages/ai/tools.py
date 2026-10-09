@@ -21,7 +21,12 @@ def search_products(query: str, filters: dict = None) -> list[dict[str, Any]]:
 def compare_products(ids: list[str]) -> list[dict[str, Any]]:
     return [CATALOG[pid] for pid in ids if pid in CATALOG]
 
-def propose_purchase(
+from apps.api.src.services.payments.factory import PaymentGatewayFactory
+from packages.database.db.session import async_session
+from packages.database.db.models import Mandate, SpendLedger
+from sqlalchemy import select
+
+async def propose_purchase(
     product_id: str, 
     quantity: int, 
     justification: str, 
@@ -52,7 +57,42 @@ def propose_purchase(
         ml_risk_score=0.1 # Real implementation would evaluate `justification` string via ML
     )
     
-    return evaluate(mandate, proposal, spend_state, datetime.now(timezone.utc))
+    # Enforce concurrency using database transactions to prevent spend-limit race conditions.
+    async with async_session() as session:
+        async with session.begin():
+            # In a real setup we use the mandate's ID. Fallback to 1 for mock execution.
+            m_id = getattr(mandate, 'id', 1)
+            
+            # Acquire an exclusive row lock on the Mandate to serialize concurrent purchases
+            # ensuring spend limit cannot be exceeded via race condition
+            await session.execute(
+                select(Mandate).where(Mandate.id == m_id).with_for_update()
+            )
+            
+            decision = evaluate(mandate, proposal, spend_state, datetime.now(timezone.utc))
+            
+            if decision.verdict == Verdict.APPROVE:
+                # Deduct from ledger
+                new_ledger = SpendLedger(
+                    mandate_id=m_id,
+                    amount=int(total_amount),
+                    currency=proposal.currency,
+                    balance_after=spend_state.current_monthly_spend + int(total_amount)
+                )
+                session.add(new_ledger)
+                
+                gateway = PaymentGatewayFactory.get_gateway()
+                intent = await gateway.create_intent(
+                    amount_cents=int(total_amount),
+                    currency=proposal.currency,
+                    reference_id=proposal.id
+                )
+                # Attach the payment intent details to the decision
+                if not hasattr(decision, "details") or decision.details is None:
+                    decision.details = {}
+                decision.details["payment_intent"] = intent.model_dump()
+                
+    return decision
 
 
 import sqlite3
