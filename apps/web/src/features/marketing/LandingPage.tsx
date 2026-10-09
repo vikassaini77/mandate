@@ -333,7 +333,7 @@ export function LandingPage() {
           <div className="flex items-center gap-4 text-[#EAEAEA]/50 md:ml-auto">
             <span>Agent spending, under control.</span>
             <span>&bull;</span>
-            <a href="https://github.com/Sakshamp19" target="_blank" rel="noreferrer" className="hover:text-white transition-none">
+            <a href="https://github.com/vikassaini77/mandate" target="_blank" rel="noreferrer" className="hover:text-white transition-none">
               Built by Saksham, Vikas, & Prashant Swami
             </a>
           </div>
