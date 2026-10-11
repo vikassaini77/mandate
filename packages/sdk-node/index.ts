@@ -6,7 +6,7 @@ export class MandateClient {
   private apiKey: string;
   private baseUrl: string;
 
-  constructor(apiKey: string, baseUrl: string = "http://localhost:8000/v1") {
+  constructor(apiKey: string, baseUrl: string = "http://localhost:8000/api/v1") {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
   }

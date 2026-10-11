@@ -8,7 +8,7 @@ class MandateClient:
     Item 24: Python SDK
     Client library for interacting with the Mandate Developer Platform.
     """
-    def __init__(self, api_key: str, base_url: str = "http://localhost:8000/v1"):
+    def __init__(self, api_key: str, base_url: str = "http://localhost:8000/api/v1"):
         self.api_key = api_key
         self.base_url = base_url
         self.client = httpx.Client(headers={"Authorization": f"Bearer {self.api_key}"})

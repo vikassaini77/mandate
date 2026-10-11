@@ -13,7 +13,7 @@ class MandateMCPServer:
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.base_url = "http://localhost:8000/v1"
+        self.base_url = "http://localhost:8000/api/v1"
         self.client = httpx.Client(headers={"Authorization": f"Bearer {self.api_key}"})
         
     def handle_request(self, req: dict) -> dict:
