@@ -192,18 +192,27 @@ export function OnboardingPage() {
                       key={item.id}
                       onClick={() => setPersona(item.id)}
                       aria-pressed={persona === item.id}
-                      className={`h-auto justify-start gap-4 p-4 text-left ${persona === item.id ? "border-primary bg-accent" : "hover:border-primary/50"}`}
+                      className={`h-auto justify-start gap-4 p-4 text-left ${persona === item.id
+                          ? "border-primary bg-accent text-black"
+                          : "hover:border-primary/50"
+                        }`}
                     >
-                      <span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted">
+                      <span
+                        className={`grid size-10 shrink-0 place-items-center rounded-md ${persona === item.id ? "bg-black/15 text-black" : "bg-muted"
+                          }`}
+                      >
                         <ShieldCheck className="size-5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <b className="block text-sm">{item.name}</b>
-                        <small className="mt-1 block whitespace-normal text-muted-foreground">
+                        <b className={`block text-sm ${persona === item.id ? "text-black" : ""}`}>{item.name}</b>
+                        <small
+                          className={`mt-1 block whitespace-normal ${persona === item.id ? "text-black font-medium" : "text-muted-foreground"
+                            }`}
+                        >
                           {item.note}
                         </small>
                       </span>
-                      {persona === item.id && <Check className="size-5 shrink-0 text-safe" />}
+                      {persona === item.id && <Check className="size-5 shrink-0 text-black" />}
                     </Button>
                   ))}
                 </div>
