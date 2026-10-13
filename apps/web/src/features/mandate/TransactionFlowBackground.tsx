@@ -32,7 +32,7 @@ export function TransactionFlowBackground({ density = "ambient" }: { density?: F
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fallback, setFallback] = useState(false);
   const intensity = useMandateStore((s) => s.intensity[0]);
-  const intensityFactor = intensity / 100;
+  const intensityFactor = intensity !== undefined ? intensity / 100 : 0;
 
   useEffect(() => {
     const canvas = canvasRef.current;
