@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { TermsDialog } from "./TermsDialog";
 import { PrivacyDialog } from "./PrivacyDialog";
+import { CyberVaultTransition } from "@/components/CyberVaultTransition";
 
 type Mode = "signin" | "signup" | "forgot";
 const schema = z.object({
@@ -29,6 +30,8 @@ export function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [vaultActive, setVaultActive] = useState(false);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const {
     register,
@@ -105,7 +108,10 @@ export function AuthPage() {
         password: values.password,
       });
       if (signInError) setError(signInError.message);
-      else if (signInData.user) await continueAfterAuth(signInData.user.id);
+      else if (signInData.user) {
+        setTargetUserId(signInData.user.id);
+        setVaultActive(true);
+      }
       return;
     }
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -124,7 +130,8 @@ export function AuthPage() {
       await supabase
         .from("profiles")
         .upsert({ id: data.user.id, display_name: values.displayName?.trim() || null });
-      await navigate({ to: "/onboarding", replace: true });
+      setTargetUserId(data.user.id);
+      setVaultActive(true);
     } else setMessage("Check your email to confirm your account, then return to sign in.");
   };
   const google = async () => {
@@ -136,7 +143,10 @@ export function AuthPage() {
     if (result.error) setError(result.error.message);
     else if (!result.redirected) {
       const { data } = await supabase.auth.getUser();
-      if (data.user) await continueAfterAuth(data.user.id);
+      if (data.user) {
+        setTargetUserId(data.user.id);
+        setVaultActive(true);
+      }
     }
   };
 
@@ -429,6 +439,14 @@ export function AuthPage() {
           </div>
         </div>
       </section>
+
+      <CyberVaultTransition
+        active={vaultActive}
+        title={mode === "signup" ? "Creating workspace..." : "Authenticating session..."}
+        onComplete={() => {
+          if (targetUserId) void continueAfterAuth(targetUserId);
+        }}
+      />
     </main>
   );
 }

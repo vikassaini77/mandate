@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useMandateStore } from "@/features/mandate/store";
+import { CyberVaultTransition } from "@/components/CyberVaultTransition";
 
 const personas = [
   { id: "careful", name: "Sentinel", note: "Escalates new vendors and unusual categories." },
@@ -25,6 +26,7 @@ const personas = [
 export function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [connected, setConnected] = useState(false);
+  const [vaultActive, setVaultActive] = useState(false);
   const [mandate, setMandate] = useState(
     "Buy productivity software up to $250 per month. Monthly plans only. Ask me before purchasing from a new vendor.",
   );
@@ -74,7 +76,7 @@ export function OnboardingPage() {
     }
     const amount = mandate.match(/\$([\d,]+)/)?.[1];
     addMandate(mandate.trim(), amount ? Number(amount.replace(",", "")) : 250);
-    await navigate({ to: "/dashboard", replace: true });
+    setVaultActive(true);
   };
   return (
     <main className="relative min-h-dvh overflow-hidden bg-background text-foreground">
@@ -249,6 +251,14 @@ export function OnboardingPage() {
           </div>
         </section>
       </div>
+
+      <CyberVaultTransition
+        active={vaultActive}
+        title="Enabling agent autonomy..."
+        onComplete={() => {
+          void navigate({ to: "/dashboard", replace: true });
+        }}
+      />
     </main>
   );
 }
