@@ -141,13 +141,26 @@ export function ChatSettingsDrawer() {
             ))}
           </SettingGroup>
           <SettingGroup title="Memory">
-            <Toggle label="Remember preferences" checked={memory} onCheckedChange={setMemory} />
+            <Toggle
+              label="Remember preferences"
+              checked={memory}
+              onCheckedChange={(val) => {
+                setMemory(val);
+                localStorage.setItem("mnd_remember_prefs", String(val));
+                toast.success(val ? "Agent preference memory enabled" : "Agent preference memory disabled");
+              }}
+            />
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => toast.success("Agent memory cleared for this workspace")}
+              onClick={() => {
+                localStorage.removeItem("mandate_chat_history");
+                localStorage.removeItem("mandate_agent_memory");
+                sessionStorage.clear();
+                toast.success("Agent conversational memory and workspace context cleared!");
+              }}
             >
-              <Eraser />
+              <Eraser className="mr-1.5 size-4" />
               Clear memory
             </Button>
           </SettingGroup>
