@@ -3,8 +3,10 @@ import os
 import sys
 from collections import defaultdict
 
-# Add backend to path for absolute imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add project root to path for absolute imports
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
 
 from scripts.redteam.lab.scenarios import SCENARIOS
 
@@ -50,7 +52,7 @@ def run_scenarios():
     return results, scoreboard
 
 def generate_markdown_report(results, scoreboard, filepath):
-    with open(filepath, "w") as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write("# MANDATE Red-Team Lab Report\n\n")
         f.write(f"**Total Scenarios:** {scoreboard['total']} | **Total Blocked:** {scoreboard['blocked']} | **PayPal Calls Triggered:** {scoreboard['paypal_calls']}\n\n")
         
@@ -77,12 +79,12 @@ def main():
     results, scoreboard = run_scenarios()
     
     # Dump JSON
-    json_path = os.path.join(os.path.dirname(__file__), "..", "redteam_report.json")
-    with open(json_path, "w") as f:
+    json_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "redteam_report.json")
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"scoreboard": scoreboard, "results": results}, f, indent=2)
         
-    # Dump Markdown
-    md_path = os.path.join(os.path.dirname(__file__), "..", "redteam_report.md")
+    # Dump Markdown in docs/ and root for easy linking
+    md_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "redteam_report.md")
     generate_markdown_report(results, scoreboard, md_path)
     
     print(f"Report generated at {md_path}")

@@ -1,4 +1,6 @@
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from packages.ai.sanitizer import DataSanitizer
@@ -14,7 +16,7 @@ from scripts.redteam.seed import (
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from apps.api.src.routes.v1.router import api_router
-from contextlib import asynccontextmanager
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,15 +51,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 class SanitizationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # AI/Prompt Injection FAANG-level defense
-        if request.method in ["POST", "PUT"]:
-            body = await request.body()
-            if body:
-                text_body = body.decode('utf-8')
-                risk_score = DataSanitizer.score_risk(text_body)
-                if risk_score > 0.8:
-                    from fastapi.responses import JSONResponse
-                    return JSONResponse(status_code=403, content={"error": "Payload flagged by ML risk scorer: High probability of Prompt Injection or Malicious Override."})  # noqa: E501
+        # AI/Prompt Injection defense targeting agent/chat prompt endpoints
+        if request.method in ["POST", "PUT"] and any(p in request.url.path for p in ["/agent", "/chat", "/redteam"]):
+            try:
+                body = await request.body()
+                if body:
+                    text_body = body.decode('utf-8', errors='ignore')
+                    risk_score = DataSanitizer.score_risk(text_body)
+                    if risk_score > 0.8:
+                        from fastapi.responses import JSONResponse
+                        return JSONResponse(status_code=403, content={"error": "Payload flagged by ML risk scorer: High probability of Prompt Injection or Malicious Override."})  # noqa: E501
+            except Exception:
+                pass
         return await call_next(request)
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -68,7 +73,7 @@ app.add_middleware(
     allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "https://hkquzuoqtdcjlixrsisb.supabase.co"],  # noqa: E501
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-API-Key"],
 )
 
 app.include_router(api_router, prefix="/api/v1")

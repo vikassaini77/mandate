@@ -67,6 +67,7 @@ def test_same_input_same_output(mandate, proposal, spend):
 
 from unittest.mock import patch
 
+
 @given(mandate_strategy(), proposal_strategy(), spend_state_strategy())
 def test_ml_can_never_make_decision_looser(mandate, proposal, spend):
     now = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)

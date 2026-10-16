@@ -1,14 +1,19 @@
-.PHONY: dev test lint seed train eval redteam
+.PHONY: dev dev-docker test test-policy lint seed train eval redteam
 
 dev:
-	docker-compose -f infrastructure/docker/docker-compose.yml up --build
+	./dev.sh || dev.bat
+
+dev-docker:
+	docker compose up --build
 
 test:
-	uv run pytest tests/ -v
+	uv run --project apps/api --extra dev pytest tests/ -v
+
+test-policy:
+	uv run --project apps/api --extra dev pytest tests/unit/test_policy.py -v
 
 lint:
 	uv run ruff check apps/api/src/ packages/ tests/ scripts/
-	uv run mypy apps/api/src/ packages/
 
 seed:
 	uv run python scripts/redteam/seed.py

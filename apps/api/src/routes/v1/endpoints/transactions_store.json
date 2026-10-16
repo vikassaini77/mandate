@@ -1,0 +1,132 @@
+[
+  {
+    "id": "prop_099c81a3",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "addab68b00f14ec84935f0e6f60da4dabc79103259a5625cb0b70c6ac657206c",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-10-16T08:55:31.691418+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-CBACD69F",
+      "status": "CREATED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-CBACD69F",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_aa65b55a",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "c7c8665a09b16fb7217bd850979d113f152f25331d3f509ae68b4567b49b4aff",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-10-16T08:55:31.705106+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_a37ca3a0"
+  },
+  {
+    "id": "prop_8503033a",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-05-MONTHLY-CAP",
+    "reason": "Blocked: 999999.99 would bring monthly spend to 1000199.99, over the 5000.00 monthly cap.",
+    "audit_hash": "459f9650e86aa690aad84f7e9c9ce5c0437b702f0b1e70a9d94f4ec496b2a31b",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-10-16T08:55:31.716206+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_3ac0b5d6",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "58a8511f8d06ad1a72b98ae10b520706c6f2e40ae64701a0006f188a3e730c6b",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-10-16T08:57:54.667134+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-85A10FDD",
+      "status": "CREATED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-85A10FDD",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_15aae67a",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "f390e88d57d1811aa1ec204bea544ee03e22f1e911285dd243b00298601776e3",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-10-16T08:57:54.683682+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_ab7f314c"
+  },
+  {
+    "id": "prop_d0d3ef00",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-05-MONTHLY-CAP",
+    "reason": "Blocked: 999999.99 would bring monthly spend to 1000199.99, over the 5000.00 monthly cap.",
+    "audit_hash": "21b983ece18c57c7ebb566ac8bb99b6ca0d095a8455315e1670f2e8bad3d9b62",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-10-16T08:57:54.691951+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  }
+]

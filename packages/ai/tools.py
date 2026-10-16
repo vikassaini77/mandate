@@ -15,16 +15,63 @@ CATALOG = {
 }
 
 def search_products(query: str, filters: dict = None) -> list[dict[str, Any]]:
-    # Mock implementation of search
-    return list(CATALOG.values())
+    """Mock implementation of search across verified catalog."""
+    query_lower = query.lower()
+    matches = [p for p in CATALOG.values() if query_lower in p["name"].lower() or query_lower in p["category"].lower()]
+    return matches if matches else list(CATALOG.values())
 
 def compare_products(ids: list[str]) -> list[dict[str, Any]]:
+    """Compares multiple products by catalog identifier."""
     return [CATALOG[pid] for pid in ids if pid in CATALOG]
 
-from apps.api.src.services.payments.factory import PaymentGatewayFactory
-from packages.database.db.session import async_session
-from packages.database.db.models import Mandate, SpendLedger
+def check_budget(mandate: MandateState, spend_state: SpendState) -> dict[str, Any]:
+    """Inspects remaining capital, daily caps, and velocity limits for the current mandate."""
+    remaining_monthly = max(0, mandate.monthly_cap_amount - spend_state.current_monthly_spend)
+    remaining_daily = max(0, mandate.rules.daily_amount_cap - spend_state.current_daily_spend)
+    remaining_transactions = max(0, mandate.rules.daily_purchase_count_cap - spend_state.daily_purchase_count)
+    return {
+        "monthly_cap_cents": mandate.monthly_cap_amount,
+        "remaining_monthly_cents": remaining_monthly,
+        "daily_cap_cents": mandate.rules.daily_amount_cap,
+        "remaining_daily_cents": remaining_daily,
+        "auto_approve_limit_cents": mandate.rules.auto_approve_limit,
+        "remaining_transactions_today": remaining_transactions,
+        "currency": "USD",
+        "is_active": mandate.is_active,
+        "kill_switch_engaged": mandate.kill_switch_engaged
+    }
+
+def search_handbook(query: str, mandate: MandateState | None = None) -> list[dict[str, Any]]:
+    """Searches corporate purchasing policy handbook rules and guidelines."""
+    handbook_entries = [
+        {"section": "MND-LIM-012", "topic": "Electronics Threshold", "content": "Electronics purchases up to $150.00 qualify for automated approval when from verified merchants."},
+        {"section": "MND-MER-021", "topic": "Merchant Verification", "content": "Unverified or first-time merchant transactions must escalate to a human manager for multi-sig approval."},
+        {"section": "MND-CAT-003", "topic": "Excluded Categories", "content": "Apparel, luxury items, gambling, and unverified gift cards are strictly prohibited by deterministic policy."},
+        {"section": "MND-VEL-009", "topic": "Anti-Structuring", "content": "Multiple purchases clustered near the auto-approval threshold within 24 hours are blocked as structuring evasion attacks."},
+        {"section": "MND-SEC-015", "topic": "Kill Switch Protocol", "content": "Any agent dropping below 30% dynamic trust score is instantly quarantined from payment execution."}
+    ]
+    query_lower = query.lower()
+    matches = [entry for entry in handbook_entries if any(w in entry["topic"].lower() or w in entry["content"].lower() for w in query_lower.split())]
+    return matches if matches else handbook_entries[:2]
+
+def delegate_task(task_description: str, target_role: str) -> dict[str, Any]:
+    """Delegates a procurement subtask to a lower-privilege agent under strict RBAC constraints."""
+    valid_roles = ["MANAGER", "EMPLOYEE", "GUEST"]
+    if target_role not in valid_roles:
+        return {"status": "error", "message": f"Invalid delegation target: {target_role}"}
+    return {
+        "status": "delegated",
+        "task": task_description,
+        "assigned_to": target_role,
+        "rbac_boundary_applied": True
+    }
+
 from sqlalchemy import select
+
+from apps.api.src.services.payments.factory import PaymentGatewayFactory
+from packages.database.db.models import Mandate, SpendLedger
+from packages.database.db.session import async_session
+
 
 async def propose_purchase(
     product_id: str, 
@@ -58,39 +105,38 @@ async def propose_purchase(
     )
     
     # Enforce concurrency using database transactions to prevent spend-limit race conditions.
-    async with async_session() as session:
-        async with session.begin():
-            # In a real setup we use the mandate's ID. Fallback to 1 for mock execution.
-            m_id = getattr(mandate, 'id', 1)
-            
-            # Acquire an exclusive row lock on the Mandate to serialize concurrent purchases
-            # ensuring spend limit cannot be exceeded via race condition
-            await session.execute(
-                select(Mandate).where(Mandate.id == m_id).with_for_update()
+    async with async_session() as session, session.begin():
+        # In a real setup we use the mandate's ID. Fallback to 1 for mock execution.
+        m_id = getattr(mandate, 'id', 1)
+        
+        # Acquire an exclusive row lock on the Mandate to serialize concurrent purchases
+        # ensuring spend limit cannot be exceeded via race condition
+        await session.execute(
+            select(Mandate).where(Mandate.id == m_id).with_for_update()
+        )
+        
+        decision = evaluate(mandate, proposal, spend_state, datetime.now(timezone.utc))
+        
+        if decision.verdict == Verdict.APPROVE:
+            # Deduct from ledger
+            new_ledger = SpendLedger(
+                mandate_id=m_id,
+                amount=int(total_amount),
+                currency=proposal.currency,
+                balance_after=spend_state.current_monthly_spend + int(total_amount)
             )
+            session.add(new_ledger)
             
-            decision = evaluate(mandate, proposal, spend_state, datetime.now(timezone.utc))
-            
-            if decision.verdict == Verdict.APPROVE:
-                # Deduct from ledger
-                new_ledger = SpendLedger(
-                    mandate_id=m_id,
-                    amount=int(total_amount),
-                    currency=proposal.currency,
-                    balance_after=spend_state.current_monthly_spend + int(total_amount)
-                )
-                session.add(new_ledger)
-                
-                gateway = PaymentGatewayFactory.get_gateway()
-                intent = await gateway.create_intent(
-                    amount_cents=int(total_amount),
-                    currency=proposal.currency,
-                    reference_id=proposal.id
-                )
-                # Attach the payment intent details to the decision
-                if not hasattr(decision, "details") or decision.details is None:
-                    decision.details = {}
-                decision.details["payment_intent"] = intent.model_dump()
+            gateway = PaymentGatewayFactory.get_gateway()
+            intent = await gateway.create_intent(
+                amount_cents=int(total_amount),
+                currency=proposal.currency,
+                reference_id=proposal.id
+            )
+            # Attach the payment intent details to the decision
+            if not hasattr(decision, "details") or decision.details is None:
+                decision.details = {}
+            decision.details["payment_intent"] = intent.model_dump()
                 
     return decision
 

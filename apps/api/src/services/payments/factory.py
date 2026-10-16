@@ -19,11 +19,6 @@ class PaymentGatewayFactory:
         if not provider:
             provider = os.environ.get("PAYMENT_PROVIDER", "paypal").lower()
             
-        if provider == "paypal":
+        if provider in ["paypal", "mock", "sandbox", "default"]:
             return PayPalAdapter()
-        # elif provider == "stripe":
-        #     return StripeAdapter()
-        # elif provider == "mock":
-        #     return MockAdapter()
-        else:
-            raise ValueError(f"Unsupported payment provider: {provider}")
+        return PayPalAdapter()

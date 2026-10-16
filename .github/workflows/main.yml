@@ -17,5 +17,8 @@ jobs:
       with:
         python-version: "3.11"
         
-    - name: CI Checks Bypassed for Hackathon
-      run: echo "Skipping ruff, mypy, and pytest for hackathon deployment speed."
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Run Deterministic Policy Security Suite
+      run: uv run --project apps/api --extra dev pytest tests/unit/test_policy.py -v
