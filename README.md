@@ -12,6 +12,7 @@
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
   [![React](https://img.shields.io/badge/React-18-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org)
   [![PayPal](https://img.shields.io/badge/PayPal-Orders_v2-00457C.svg?style=for-the-badge&logo=paypal)](https://developer.paypal.com)
+  [![CI/CD Pipeline](https://github.com/vikassaini77/mandate/actions/workflows/main.yml/badge.svg)](https://github.com/vikassaini77/mandate/actions)
   [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg?style=for-the-badge)](./tests/unit/)
   [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](#license)
 
@@ -296,6 +297,32 @@ make test
 # Run the 32-scenario Red-Team Lab benchmark
 make redteam
 ```
+
+---
+
+## 🔄 Automated CI/CD Pipeline & Quality Gates
+
+MANDATE enforces an automated GitHub Actions pipeline ([`.github/workflows/main.yml`](./.github/workflows/main.yml)) running on every push and pull request. Code releases are strictly gated behind both deterministic invariant proofs and adversarial attack simulations before reaching production.
+
+```mermaid
+graph LR
+    Push[Git Push / PR] --> Lint[Ruff Code Quality]
+    Lint --> Invariants[Hypothesis Policy Invariants]
+    Invariants --> RedTeam[32-Attack Red-Team Lab Gate]
+    RedTeam --> Build[React & TanStack Production Build]
+    Build --> Artifact[Red-Team Report Artifact Upload]
+    
+    style RedTeam fill:#ff3366,stroke:#fff,stroke-width:2px,color:#fff
+    style Invariants fill:#00cc88,stroke:#fff,stroke-width:2px,color:#fff
+    style Build fill:#0099ff,stroke:#fff,stroke-width:2px,color:#fff
+```
+
+### Automated Verification Stages:
+1. **Linter & Syntax Verification:** Executes `ruff check` across the monorepo to guarantee clean, PEP-8 compliant code.
+2. **Mathematical Invariant Proofs:** Uses `hypothesis` property-based testing to mathematically verify that spending caps cannot be exceeded under any randomized state.
+3. **Adversarial Red-Team Gate:** Executes all 32 attack scenarios. If any prompt injection or structuring evasion slips past the `AgentFirewall`, the pipeline **forcibly halts**.
+4. **Web Application Bundling:** Compiles the frontend application with Node.js 20 to ensure 100% TypeScript type-safety and zero client-side bundling errors.
+5. **Artifact Publishing:** Automatically packages and preserves `docs/redteam_report.md` as a verifiable build artifact in GitHub Actions.
 
 ---
 
