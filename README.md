@@ -118,6 +118,28 @@ MOCK_PAYPAL=true
 ```
 When enabled, the client simulates real PayPal order IDs (`PAYPAL-SBX-XXXX`), capture receipts, and refund flows instantly.
 
+### 4. Setting Up Real PayPal Sandbox Credentials (For Teammates & Developers)
+While judges can evaluate the application out-of-the-box with `MOCK_PAYPAL=true`, team members and developers who want to test end-to-end payments against live PayPal Sandbox APIs can get free credentials in 2 minutes:
+
+1. **Obtain Sandbox API Keys:**
+   * Go to [developer.paypal.com](https://developer.paypal.com/) and log in (using any personal or business PayPal account).
+   * Go to **Apps & Credentials** (ensure the **Sandbox** toggle is selected).
+   * Click **Create App** (App Type: *Merchant*, Name: `Mandate Sandbox`).
+   * Copy the generated **Client ID** and **Secret**.
+   * In your `.env` file, configure:
+     ```env
+     MOCK_PAYPAL=false
+     PAYPAL_CLIENT_ID=your_sandbox_client_id
+     PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
+     ```
+
+2. **Obtain a Test Buyer Account to "Pay" in Sandbox:**
+   * In the PayPal Developer Dashboard, navigate to **Testing Tools** ➔ **Sandbox Accounts**.
+   * Locate the pre-generated **Personal (Buyer)** account (e.g. `sb-buyerXXXXX@personal.example.com`).
+   * Click the three dots `...` next to it ➔ **View/Edit account**.
+   * Copy the **Email ID** and the **System Generated Password**.
+   * When an order's checkout approval link is opened, log in with this test buyer account to approve and settle the simulated payment with zero real money spent.
+
 ---
 
 ## 🧠 How AI is Used
