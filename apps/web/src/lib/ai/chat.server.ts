@@ -99,7 +99,7 @@ export async function handleAgentChat(request: Request) {
       apiKey: geminiApiKey,
       fetch: run.fetch,
     });
-    aiModel = google("gemini-3.1-flash-lite");
+    aiModel = google("gemini-1.5-flash");
   } else {
     const provider = createOpenAI({
       baseURL: "https://ai.gateway.lovable.dev/v1",
