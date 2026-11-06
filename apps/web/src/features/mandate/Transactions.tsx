@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { ActionEmpty } from "./WorkspaceStates";
 import { VerdictBadge } from "./VerdictBadge";
+import { useMandateStore } from "./store";
 
 type PaymentStatus = "completed" | "pending" | "refunded" | "denied";
 type Payment = {
@@ -115,7 +116,14 @@ const seed: Payment[] = [
 ];
 
 export function Transactions() {
+<<<<<<< HEAD
   const storeTransactions = useMandateStore((state) => state.transactions);
+=======
+  const requests = useMandateStore((state) => state.requests);
+  const [payments, setPayments] = useState(seed);
+  const [backendPayments, setBackendPayments] = useState<Payment[]>([]);
+  const [refunds, setRefunds] = useState<Record<string, number>>({});
+>>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<Payment | null>(null);
@@ -123,6 +131,7 @@ export function Transactions() {
   const [refundAmount, setRefundAmount] = useState("");
   const [revealed, setRevealed] = useState(false);
 
+<<<<<<< HEAD
   // Sync latest transactions from backend
   useEffect(() => {
     mandateApi.getTransactions().then((res) => {
@@ -180,34 +189,163 @@ export function Transactions() {
     [filter, payments, query],
   );
   const issueRefund = () => {
+=======
+  useEffect(() => {
+    async function loadBackendTransactions() {
+      try {
+        const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+        const res = await fetch(`${BACKEND_URL}/api/v1/transactions/`, {
+          headers: { "X-API-Key": "dev-agent-key-123" },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+            const mapped: Payment[] = json.data
+              .filter((tx: any) => tx.status === "COMPLETED")
+              .map((tx: any) => ({
+                id: tx.paypal_order_id || `PAYPAL-SBX-${tx.id}`,
+                merchant: tx.merchant || "Authorized Merchant",
+                item: tx.description || `${tx.category || "Item"} Purchase`,
+                amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
+                status: "completed" as PaymentStatus,
+                date: tx.timestamp
+                  ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                  : "Just now",
+                mandate: tx.rule_id || "Human-in-the-Loop Approval",
+                verdict: `${tx.verdict || "APPROVE"} · ${tx.rule_id || "MND-AUTO"}`,
+                refunded: 0,
+                employee: "Security Operator",
+              }));
+            setBackendPayments(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load backend transactions:", err);
+      }
+    }
+    void loadBackendTransactions();
+  }, []);
+
+  const approvedFromStore = useMemo(() => {
+    return requests
+      .filter((req) => req.status === "approved")
+      .map((req) => ({
+        id: req.paypal_order_id || `PAYPAL-SBX-${req.id.toUpperCase()}`,
+        merchant: req.merchant,
+        item: req.item,
+        amount: req.amount,
+        status: "completed" as PaymentStatus,
+        date: req.resolved_at
+          ? new Date(req.resolved_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : (req.time || "Just now"),
+        mandate: "Human-in-the-Loop Approval",
+        verdict: "APPROVE · HUMAN_OVERRIDE",
+        refunded: 0,
+        employee: "Security Operator",
+      }));
+  }, [requests]);
+
+  const allPayments = useMemo(() => {
+    const map = new Map<string, Payment>();
+    // 1. Approved items from the approval store (reactive & instant)
+    for (const p of approvedFromStore) {
+      const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
+      map.set(p.id, {
+        ...p,
+        refunded: refundedAmt,
+        status: refundedAmt >= p.amount ? "refunded" : p.status,
+      });
+    }
+    // 2. Real completed transactions from the backend
+    for (const p of backendPayments) {
+      if (!map.has(p.id)) {
+        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
+        map.set(p.id, {
+          ...p,
+          refunded: refundedAmt,
+          status: refundedAmt >= p.amount ? "refunded" : p.status,
+        });
+      }
+    }
+    // 3. Base seed payments
+    for (const p of payments) {
+      if (!map.has(p.id)) {
+        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
+        map.set(p.id, {
+          ...p,
+          refunded: refundedAmt,
+          status: refundedAmt >= p.amount ? "refunded" : p.status,
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [approvedFromStore, backendPayments, payments, refunds]);
+
+  const metrics = useMemo(() => {
+    // Settled this month: sum of all completed & refunded payments
+    const settledAmount = allPayments
+      .filter((p) => p.status === "completed" || p.status === "refunded")
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    // Total refunded amount
+    const refundedAmount = allPayments.reduce((sum, p) => sum + (p.refunded || 0), 0);
+
+    // Success rate: completed & refunded vs denied
+    const successfulCount = allPayments.filter((p) => p.status === "completed" || p.status === "refunded").length;
+    const deniedCount = allPayments.filter((p) => p.status === "denied").length;
+    const totalDecided = successfulCount + deniedCount;
+    const rate = totalDecided > 0 ? `${((successfulCount / totalDecided) * 100).toFixed(1)}%` : "100.0%";
+
+    const currencyFormatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    });
+
+    return {
+      settled: currencyFormatter.format(settledAmount),
+      refunded: currencyFormatter.format(refundedAmount),
+      rate,
+    };
+  }, [allPayments]);
+
+  const rows = useMemo(() => {
+    return allPayments.filter(
+      (row) =>
+        (filter === "all" || row.status === filter) &&
+        `${row.merchant} ${row.item} ${row.id}`.toLowerCase().includes(query.toLowerCase()),
+    );
+  }, [allPayments, filter, query]);
+
+  const issueRefund = async () => {
+>>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
     if (!selected) return;
     const amount = Number(refundAmount);
     if (!amount || amount <= 0 || amount > selected.amount - selected.refunded) {
       toast.error("Enter an amount within the refundable balance");
       return;
     }
-    setPayments((current) =>
-      current.map((row) =>
-        row.id === selected.id
-          ? {
-              ...row,
-              refunded: row.refunded + amount,
-              status: row.refunded + amount >= row.amount ? "refunded" : "completed",
-            }
-          : row,
-      ),
-    );
-    setSelected((row) =>
-      row
-        ? {
-            ...row,
-            refunded: row.refunded + amount,
-            status: row.refunded + amount >= row.amount ? "refunded" : "completed",
-          }
-        : null,
-    );
+    const newRefunded = selected.refunded + amount;
+    const newStatus: PaymentStatus = newRefunded >= selected.amount ? "refunded" : "completed";
+
+    setRefunds((prev) => ({ ...prev, [selected.id]: newRefunded }));
+    setSelected((prev) => (prev ? { ...prev, refunded: newRefunded, status: newStatus } : null));
     setRefundOpen(false);
     setRefundAmount("");
+
+    try {
+      const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+      await fetch(`${BACKEND_URL}/api/v1/transactions/${selected.id}/refund`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "dev-agent-key-123",
+        },
+        body: JSON.stringify({ amount_cents: Math.round(amount * 100) }),
+      });
+    } catch {}
+
     toast.success(`$${amount.toFixed(2)} refund submitted in PayPal Sandbox`);
   };
   return (
@@ -228,9 +366,9 @@ export function Transactions() {
         </div>
       </div>
       <section className="grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-3">
-        <Metric icon={CircleDollarSign} label="Settled this month" value="$1,842.62" />
-        <Metric icon={ArrowDownLeft} label="Refunded" value="$64.00" />
-        <Metric icon={Receipt} label="Success rate" value="96.8%" />
+        <Metric icon={CircleDollarSign} label="Settled this month" value={metrics.settled} />
+        <Metric icon={ArrowDownLeft} label="Refunded" value={metrics.refunded} />
+        <Metric icon={Receipt} label="Success rate" value={metrics.rate} />
       </section>
       <div className="flex flex-col gap-2 sm:flex-row">
         <label className="relative flex-1">

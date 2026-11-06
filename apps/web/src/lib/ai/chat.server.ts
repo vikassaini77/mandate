@@ -45,6 +45,13 @@ export async function handleAgentChat(request: Request) {
   if (!thread) return Response.json({ message: "Conversation not found." }, { status: 404 });
   const messages = parsed.data.messages as UIMessage[];
   const lastUser = [...messages].reverse().find((message) => message.role === "user");
+  const userText = lastUser?.parts
+    ? (lastUser.parts as any[])
+        .map((p) => (typeof p === "string" ? p : p?.text || ""))
+        .filter(Boolean)
+        .join(" ")
+    : "";
+
   if (lastUser) {
     const { data: saved } = await supabaseAuth
       .from("chat_messages")
@@ -64,9 +71,69 @@ export async function handleAgentChat(request: Request) {
         return Response.json({ message: "Your message could not be saved." }, { status: 500 });
     }
   }
+
+  // Queue purchase proposal to the Policy Engine backend
+  const queueProposal = async () => {
+    try {
+      const BACKEND_URL = (process.env["API_URL"] || process.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+      const text = userText.toLowerCase();
+
+      let merchant = "Amazon Business";
+      let item = "Enterprise Equipment Order";
+      let amountCents = 34900;
+      let category = "Hardware";
+
+      if (text.includes("headphone") || text.includes("audio") || text.includes("sony") || text.includes("auralis")) {
+        merchant = "Sony Electronics";
+        item = "Sony WH-1000XM5 Wireless Noise-Canceling Headphones";
+        amountCents = 39900;
+        category = "Electronics";
+      } else if (text.includes("keyboard") || text.includes("mouse") || text.includes("logitech") || text.includes("keychron")) {
+        merchant = "Keychron";
+        item = "Keychron Q1 Pro Mechanical Keyboard";
+        amountCents = 21900;
+        category = "Electronics";
+      } else if (text.includes("monitor") || text.includes("dell") || text.includes("display") || text.includes("screen")) {
+        merchant = "Dell Technologies";
+        item = "Dell UltraSharp 32 4K USB-C Hub Monitor";
+        amountCents = 79900;
+        category = "Hardware";
+      } else if (text.includes("laptop") || text.includes("macbook") || text.includes("computer") || text.includes("apple")) {
+        merchant = "Apple Store";
+        item = "MacBook Pro 14-inch M3 Pro";
+        amountCents = 199900;
+        category = "Hardware";
+      } else if (text.includes("software") || text.includes("seat") || text.includes("license") || text.includes("figma") || text.includes("linear")) {
+        merchant = "Figma";
+        item = "Enterprise Team License · 5 Seats";
+        amountCents = 37500;
+        category = "Software";
+      }
+
+      await fetch(`${BACKEND_URL}/api/v1/transactions/propose`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "dev-agent-key-123",
+        },
+        body: JSON.stringify({
+          amount_cents: amountCents,
+          merchant,
+          category,
+          description: item,
+        }),
+      });
+    } catch (err) {
+      console.warn("Failed to queue proposal from chat.server:", err);
+    }
+  };
+
   const lovableApiKey = process.env["LOVABLE_API_KEY"];
   const geminiApiKey = process.env["GEMINI_API_KEY"];
   if (!lovableApiKey && !geminiApiKey) {
+    // Submit proposal to policy engine backend before streaming
+    await queueProposal();
+
     // Fallback Mock Streaming for the hackathon if API key is missing
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -215,6 +282,12 @@ export async function handleAgentChat(request: Request) {
         .update({ updated_at: new Date().toISOString() })
         .eq("id", thread.id)
         .eq("user_id", userId);
+
+      // If the assistant message mentions queuing a proposal, guarantee it is sent to backend
+      const partsStr = JSON.stringify(responseMessage.parts);
+      if (partsStr.includes("requires approval") || partsStr.includes("queued a proposal")) {
+        await queueProposal();
+      }
     },
   });
   return withRunId(response, run);

@@ -11,7 +11,7 @@ from packages.database.spend_state import SpendState
 from packages.database.verdict import Verdict
 from pydantic import BaseModel, Field
 
-from apps.api.src.routes.v1.endpoints.approvals import _APPROVAL_QUEUE
+from apps.api.src.routes.v1.endpoints.approvals import _APPROVAL_QUEUE, add_to_approval_queue
 from apps.api.src.routes.v1.endpoints.mandates import _MOCK_MANDATES
 from apps.api.src.services.auth import Principal, Role, get_current_principal, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
@@ -52,13 +52,69 @@ class ProposeTransactionRequest(BaseModel):
     currency: Optional[str] = Field("USD", description="3-letter currency code")
     mandate_id: Optional[str] = Field("mandate_1", description="ID of the governing mandate")
 
+def record_completed_approval(req: dict, intent_id: Optional[str] = None):
+    """
+    Synchronizes an approved transaction into the completed transactions store.
+    Sanitizes content to prevent leaking internal payment secrets or private identifiers.
+    """
+    prop_id = req.get("proposal_id") or req.get("id")
+    match = next((t for t in _TRANSACTIONS if t.get("id") == prop_id or t.get("approval_id") == req.get("id")), None)
+    
+    now = datetime.now(timezone.utc).isoformat()
+    if match:
+        match["status"] = "COMPLETED"
+        match["verdict"] = "APPROVE"
+        match["paypal_order_id"] = intent_id or req.get("paypal_order_id")
+        match["resolved_at"] = req.get("resolved_at") or now
+    else:
+        amount_cents = req.get("amount_cents")
+        if amount_cents is None:
+            amount_cents = int(req.get("amount", 0) * 100)
+        _TRANSACTIONS.insert(0, {
+            "id": prop_id,
+            "amount_cents": amount_cents,
+            "merchant": req.get("merchant", "Authorized Vendor"),
+            "category": req.get("category", "General"),
+            "currency": "USD",
+            "description": req.get("item") or req.get("description", "Approved Purchase"),
+            "verdict": "APPROVE",
+            "rule_id": "MND-HUMAN-APPROVAL",
+            "reason": "Authorized by Manager via Human Approval Center",
+            "trust_score_after": 100.0,
+            "timestamp": req.get("resolved_at") or now,
+            "paypal_order_id": intent_id or req.get("paypal_order_id") or f"PAYPAL-SBX-{req.get('id')}",
+            "status": "COMPLETED",
+            "approval_id": req.get("id")
+        })
+    _save_transactions()
+
 @router.get('/')
 async def list_transactions(
     skip: int = 0, 
     limit: int = 100,
     principal: Principal = Depends(get_current_principal)
 ): 
-    return {"data": _TRANSACTIONS}
+    # Sanitized transaction list: exposes only public audit and receipt data.
+    # Shields internal PayPal credentials, private tokens, and sensitive headers.
+    sanitized = []
+    for tx in _TRANSACTIONS:
+        sanitized.append({
+            "id": tx.get("id"),
+            "amount_cents": tx.get("amount_cents"),
+            "amount": (tx.get("amount_cents") or 0) / 100.0 if "amount_cents" in tx else tx.get("amount", 0),
+            "merchant": tx.get("merchant"),
+            "category": tx.get("category"),
+            "currency": tx.get("currency", "USD"),
+            "description": tx.get("description"),
+            "verdict": tx.get("verdict"),
+            "rule_id": tx.get("rule_id"),
+            "reason": tx.get("reason"),
+            "status": tx.get("status"),
+            "timestamp": tx.get("timestamp"),
+            "approval_id": tx.get("approval_id"),
+            "paypal_order_id": tx.get("paypal_order_id") or ((tx.get("paypal_order") or {}).get("id") if isinstance(tx.get("paypal_order"), dict) else None),
+        })
+    return {"data": sanitized}
 
 @router.post('/reset-spend')
 async def reset_spend(principal: Principal = Depends(get_current_principal)):
@@ -144,16 +200,20 @@ async def propose_transaction(
             
     elif decision.verdict == Verdict.ESCALATE:
         approval_id = f"appr_{uuid.uuid4().hex[:8]}"
-        _APPROVAL_QUEUE[approval_id] = {
+        add_to_approval_queue({
             "id": approval_id,
             "proposal_id": prop_id,
+            "item": payload.description or f"{payload.category} order",
             "amount_cents": payload.amount_cents,
+            "amount": payload.amount_cents / 100.0,
             "merchant": payload.merchant,
             "category": payload.category,
-            "status": "PENDING",
+            "status": "pending",
+            "time": "Just now",
             "reason": decision.reason,
+            "confidence": 75,
             "timestamp": now.isoformat()
-        }
+        })
         tx_record["approval_id"] = approval_id
 
         # Trigger Human-in-the-Loop notification via Slack if configured

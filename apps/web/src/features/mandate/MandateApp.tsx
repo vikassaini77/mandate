@@ -211,12 +211,17 @@ export function MandateApp({
   const [intro, setIntro] = useState(false);
   
   const requests = useMandateStore((state) => state.requests);
+  const fetchRequests = useMandateStore((state) => state.fetchRequests);
   const theme = useMandateStore((state) => state.theme);
   const setTheme = useMandateStore((state) => state.setTheme);
   const accent = useMandateStore((state) => state.accent);
   const storeActiveView = useMandateStore((state) => state.activeView);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    void fetchRequests();
+  }, [fetchRequests]);
   const { data: profile } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -848,10 +853,25 @@ function ChatSession({
     onFinish: (message) => {
       queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
       window.setTimeout(() => inputRef.current?.focus(), 50);
+
+      // Immediately sync latest approval requests from backend into the store
+      void useMandateStore.getState().fetchRequests();
+
+      // Show toast notification if a proposal was queued
+      const textToScan = message?.content || (message?.parts as any[])?.filter((p: any) => p.type === "text").map((p: any) => p.text).join(" ") || "";
+      if (textToScan.includes("requires approval") || textToScan.includes("queued a proposal")) {
+        toast.info("Purchase proposal queued for approval", {
+          description: "A new escalated transaction has been added to your Approvals Center.",
+          action: {
+            label: "Review",
+            onClick: () => setView("approvals"),
+          },
+        });
+      }
       
       // Voice assistant TTS
       try {
-        const textToSpeak = message?.content || (message?.parts as any[])?.filter(p => p.type === "text").map(p => p.text).join(" ") || "";
+        const textToSpeak = textToScan;
         if (textToSpeak && window.speechSynthesis) {
           window.speechSynthesis.cancel();
           const cleanText = textToSpeak.replace(/[_*#`~]/g, '').replace(/\[.*?\]\(.*?\)/g, 'a link');
@@ -1967,8 +1987,13 @@ function MandateBuilder() {
 function Approvals() {
   const requests = useMandateStore((state) => state.requests);
   const resolve = useMandateStore((state) => state.resolveRequest);
+<<<<<<< HEAD
   const completeTransaction = useMandateStore((state) => state.completeTransaction);
   const addTransaction = useMandateStore((state) => state.addTransaction);
+=======
+  const fetchRequests = useMandateStore((state) => state.fetchRequests);
+  const resetRequests = useMandateStore((state) => state.resetRequests);
+>>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
   const [selected, setSelected] = useState<string | null>(null);
   const [verifyingRequest, setVerifyingRequest] = useState<{ id: string, action: "approve" | "sign" } | null>(null);
   const [checkoutSession, setCheckoutSession] = useState<{
@@ -1986,8 +2011,20 @@ function Approvals() {
   const [signatures, setSignatures] = useState<Record<string, number>>({});
   const active = requests.find((request) => request.id === selected);
   const pending = requests.filter((request) => request.status === "pending");
+<<<<<<< HEAD
   const decide = async (id: string, status: Exclude<RequestStatus, "pending">) => {
     resolve(id, status);
+=======
+
+  useEffect(() => {
+    void fetchRequests();
+  }, [fetchRequests]);
+
+  const decide = (id: string, status: Exclude<RequestStatus, "pending">) => {
+    resolve(id, status);
+    if (status === 'approved') mandateApi.approveTransaction(id).catch(console.error);
+    if (status === 'blocked' || status === 'denied') mandateApi.denyTransaction(id).catch(console.error);
+>>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
     setSelected(null);
     if (status === "approved") {
       setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
@@ -2070,6 +2107,7 @@ function Approvals() {
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
+<<<<<<< HEAD
       <PageTitle
         eyebrow="Human checkpoint"
         title="Approvals Center"
@@ -2120,6 +2158,27 @@ function Approvals() {
           </div>
         </motion.div>
       )}
+=======
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageTitle
+          eyebrow="Human checkpoint"
+          title="Approvals Center"
+          description="Resolve edge cases before their authorization window closes."
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start sm:self-auto font-mono text-xs gap-1.5"
+          onClick={async () => {
+            await resetRequests();
+            toast.success("Approval queue reset to default pending items.");
+          }}
+        >
+          <RefreshCw className="size-3.5" />
+          Reset Queue
+        </Button>
+      </div>
+>>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
       <div className="grid gap-4 xl:grid-cols-2">
         {pending.map((request, index) => (
           <motion.div
@@ -2216,7 +2275,21 @@ function Approvals() {
         ))}
       </div>
       {!pending.length && (
-        <Empty title="Queue cleared" text="Every escalated purchase has been resolved." />
+        <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-lg bg-card/40">
+          <Empty title="Queue cleared" text="Every escalated purchase has been resolved." />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 font-mono text-xs gap-1.5"
+            onClick={async () => {
+              await resetRequests();
+              toast.success("Approval queue reset to default pending items.");
+            }}
+          >
+            <RefreshCw className="size-3.5" />
+            Reset Queue to Demo State
+          </Button>
+        </div>
       )}
       <Dialog open={Boolean(active)} onOpenChange={(open) => !open && setSelected(null)}>
         {active && (
