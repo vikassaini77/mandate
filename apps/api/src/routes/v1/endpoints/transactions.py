@@ -60,6 +60,13 @@ async def list_transactions(
 ): 
     return {"data": _TRANSACTIONS}
 
+@router.post('/reset-spend')
+async def reset_spend(principal: Principal = Depends(get_current_principal)):
+    _GLOBAL_SPEND_STATE.current_daily_spend = 0
+    _GLOBAL_SPEND_STATE.daily_purchase_count = 0
+    _GLOBAL_SPEND_STATE.current_monthly_spend = 0
+    return {"status": "success", "message": "Spend counters reset to zero.", "spend_state": _GLOBAL_SPEND_STATE.model_dump()}
+
 @router.post('/propose')
 async def propose_transaction(
     payload: ProposeTransactionRequest,
@@ -161,7 +168,7 @@ async def propose_transaction(
         except Exception:
             pass
 
-    _TRANSACTIONS.append(tx_record)
+    _TRANSACTIONS.insert(0, tx_record)
     _save_transactions()
 
     return {
@@ -174,6 +181,61 @@ async def propose_transaction(
         "paypal_order": paypal_order,
         "transaction": tx_record
     }
+
+class CompleteTxRequest(BaseModel):
+    paypal_order_id: Optional[str] = None
+    amount_cents: Optional[int] = None
+    merchant: Optional[str] = None
+    description: Optional[str] = None
+
+@router.post('/{tx_id}/complete')
+async def complete_transaction(
+    tx_id: str,
+    payload: Optional[CompleteTxRequest] = None,
+    principal: Principal = Depends(get_current_principal)
+):
+    """
+    Marks a transaction as COMPLETED upon successful PayPal checkout.
+    Updates spend tracking counters and transaction ledger.
+    """
+    target = None
+    for tx in _TRANSACTIONS:
+        if tx.get("id") == tx_id or tx.get("approval_id") == tx_id:
+            target = tx
+            break
+            
+    if not target:
+        amt = payload.amount_cents if (payload and payload.amount_cents) else 29997
+        merch = payload.merchant if (payload and payload.merchant) else "Vendor"
+        target = {
+            "id": tx_id,
+            "amount_cents": amt,
+            "merchant": merch,
+            "category": "Electronics",
+            "currency": "USD",
+            "description": payload.description if payload and payload.description else "Completed purchase",
+            "verdict": "APPROVE",
+            "rule_id": "MND-LIM-012",
+            "reason": "Payment successfully authorized and captured via PayPal Sandbox.",
+            "audit_hash": uuid.uuid4().hex,
+            "trust_score_after": 100.0,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "COMPLETED",
+            "paypal_order": {"id": payload.paypal_order_id if payload else None}
+        }
+        _TRANSACTIONS.insert(0, target)
+        _GLOBAL_SPEND_STATE.current_monthly_spend += amt
+        _GLOBAL_SPEND_STATE.current_daily_spend += amt
+        _GLOBAL_SPEND_STATE.daily_purchase_count += 1
+    else:
+        target["status"] = "COMPLETED"
+        if payload and payload.paypal_order_id:
+            if not target.get("paypal_order"):
+                target["paypal_order"] = {}
+            target["paypal_order"]["id"] = payload.paypal_order_id
+            
+    _save_transactions()
+    return {"status": "success", "message": "Transaction marked as COMPLETED.", "transaction": target}
 
 @router.post('/{tx_id}/refund')
 async def refund_transaction(

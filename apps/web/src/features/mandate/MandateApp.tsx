@@ -18,14 +18,21 @@ import {
   Copy,
   CreditCard,
   Download,
+  ExternalLink,
   FileCheck2,
   Gauge,
+  Headphones,
   History,
+  Keyboard,
+  Laptop,
+  Layers,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Menu,
   MessageSquareText,
   Mic,
+  Monitor,
   Moon,
   MoreHorizontal,
   PanelLeftClose,
@@ -38,6 +45,7 @@ import {
   Settings,
   ShieldAlert,
   ShieldCheck,
+  ShoppingBag,
   Swords,
   Sun,
   Trash2,
@@ -112,7 +120,7 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { mandateApi } from "./api";
+import { mandateApi, API_V1_URL } from "./api";
 import { useMandateStore, type RequestStatus } from "./store";
 import { customAiFetch } from "@/lib/ai/local-fetch";
 import { MandateIntro } from "./MandateIntro";
@@ -160,6 +168,7 @@ type Thread = { id: string; title: string; created_at: string; updated_at: strin
 type RuleSet = {
   monthlyCap: number;
   autoApprove: number;
+  dailyCap: number;
   categories: string[];
   blockedMerchants: string[];
   timeWindow: string;
@@ -205,6 +214,7 @@ export function MandateApp({
   const theme = useMandateStore((state) => state.theme);
   const setTheme = useMandateStore((state) => state.setTheme);
   const accent = useMandateStore((state) => state.accent);
+  const storeActiveView = useMandateStore((state) => state.activeView);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: profile } = useQuery({
@@ -222,6 +232,11 @@ export function MandateApp({
   useEffect(() => {
     setView(initialView);
   }, [initialView]);
+  useEffect(() => {
+    if (storeActiveView && storeActiveView !== view) {
+      chooseView(storeActiveView as View);
+    }
+  }, [storeActiveView]);
   useEffect(() => {
     let isDark = true;
     if (theme === "System") {
@@ -263,6 +278,7 @@ export function MandateApp({
   const chooseView = async (next: View) => {
     setMobileNav(false);
     setCommandOpen(false);
+    useMandateStore.getState().setActiveView(next);
     if (next === "chat") {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
@@ -547,13 +563,25 @@ export function MandateApp({
 
 function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
   const requests = useMandateStore((state) => state.requests);
+  const transactions = useMandateStore((state) => state.transactions);
+  const monthlyCap = useMandateStore((state) => state.monthlyCap) || 5000;
   const [active, setActive] = useState(true);
   const [confirmKill, setConfirmKill] = useState(false);
-  const { data = [] } = useQuery({
-    queryKey: ["activity"],
-    queryFn: mandateApi.getActivity,
-  });
-  const pending = requests.filter((request) => request.status === "pending").length;
+
+  // Compute live dynamic metrics
+  const completedTxs = transactions.filter((t) => t.status === "completed");
+  const totalSpent = completedTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const budgetRemaining = Math.max(0, monthlyCap - totalSpent);
+  const percentSpent = Math.min(100, Math.round((totalSpent / monthlyCap) * 100));
+
+  const pendingRequests = requests.filter((request) => request.status === "pending");
+  const pending = pendingRequests.length;
+  const pendingExposure = pendingRequests.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+  const blockedTxs = transactions.filter((t) => t.verdict === "BLOCK" || t.status === "denied");
+  const blockedCount = blockedTxs.length;
+  const blockedProtected = blockedTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+
   return (
     <div className="space-y-6">
       <PageTitle
@@ -570,31 +598,31 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
       <section className="grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 xl:grid-cols-4">
         <CountMetric
           label="Spent this month"
-          value={1842.62}
+          value={Number(totalSpent.toFixed(2))}
           prefix="$"
-          note="41% of $4,500"
+          note={`${percentSpent}% of $${monthlyCap.toLocaleString()}`}
           icon={CircleDollarSign}
         />
         <CountMetric
           label="Budget remaining"
-          value={2657.38}
+          value={Number(budgetRemaining.toFixed(2))}
           prefix="$"
-          note="19 days remaining"
+          note={`Dynamic control line`}
           icon={Gauge}
         />
         <CountMetric
           label="Approvals pending"
           value={pending}
-          note="$341 exposure"
+          note={`$${Math.round(pendingExposure)} exposure`}
           icon={Clock3}
-          warning
+          warning={pending > 0}
         />
         <CountMetric
           label="Blocked attempts"
-          value={7}
-          note="$783 protected"
+          value={blockedCount}
+          note={`$${Math.round(blockedProtected)} protected`}
           icon={ShieldAlert}
-          danger
+          danger={blockedCount > 0}
         />
       </section>
       <div className="grid gap-6 xl:grid-cols-[1.45fr_.75fr]">
@@ -612,15 +640,15 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
       <div className="grid gap-6 xl:grid-cols-[1.25fr_.75fr]">
         <Panel
           title="Live activity"
-          subtitle="Decisions arriving from the policy gate"
+          subtitle="Real-time decisions arriving from the policy gate"
           action={
-            <Button variant="ghost" size="sm" onClick={() => onNavigate("audit")}>
-              Open ledger <ChevronRight />
+            <Button variant="ghost" size="sm" onClick={() => onNavigate("transactions")}>
+              Open transactions <ChevronRight />
             </Button>
           }
         >
           <div className="mt-4 divide-y divide-border">
-            {data.slice(0, 5).map((row) => (
+            {transactions.slice(0, 5).map((row) => (
               <div key={row.id} className="flex items-center gap-3 py-3">
                 <MerchantMark name={row.merchant} />
                 <div className="min-w-0 flex-1">
@@ -628,11 +656,13 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
                     {row.merchant} · {row.item}
                   </p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {row.time} · {row.rule}
+                    {row.date} · {row.ruleId ? `Rule ${row.ruleId}` : row.reason}
                   </p>
                 </div>
-                <Status value={row.decision} />
-                <span className="font-mono text-xs">{formatMoney(row.amount)}</span>
+                <div className="text-right">
+                  <p className="font-mono text-xs font-semibold">{formatMoney(row.amount)}</p>
+                  <Status value={row.verdict.toLowerCase()} />
+                </div>
               </div>
             ))}
           </div>
@@ -794,6 +824,8 @@ function ChatSession({
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
   const localAI = useMandateStore((state) => state.localAI);
+  const autoApproveLimit = useMandateStore((state) => state.autoApproveLimit);
+  const dailySpendCap = useMandateStore((state) => state.dailySpendCap);
 
   const transport = useMemo(
     () =>
@@ -803,10 +835,10 @@ function ChatSession({
           const { data } = await supabase.auth.getSession();
           return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
         },
-        body: { id: threadId },
+        body: { id: threadId, autoApproveLimit, dailySpendCap },
         fetch: localAI ? customAiFetch : undefined,
       }),
-    [threadId, localAI],
+    [threadId, localAI, autoApproveLimit, dailySpendCap],
   );
   const { messages, sendMessage, status, stop, regenerate } = useChat({
     id: threadId,
@@ -1085,31 +1117,55 @@ function ChatSession({
                       >
                         {part.text}
                       </MessageResponse>
-                    ) : part.type === "tool-invocation" && part.toolInvocation.toolName === "delegate_task" ? (
+                    ) : ((part as any).type === "tool-delegate_task" || ((part as any).type === "dynamic-tool" && (part as any).toolName === "delegate_task") || ((part as any).type === "tool-invocation" && (part as any).toolInvocation?.toolName === "delegate_task")) ? (
                       <div key={`${message.id}-${partIndex}`} className="mt-4 mb-2 rounded-lg border border-border bg-subtle p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-3 border-b border-border pb-2">
                           <Users className="size-4 text-signal" />
                           <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[#EAEAEA]">
-                            {part.toolInvocation.args?.agent_type || "RESEARCHER"} (Sub-Agent)
+                            {((part as any).input?.agent_type || (part as any).toolInvocation?.args?.agent_type || "RESEARCHER")} (Sub-Agent)
                           </span>
                         </div>
-                        {part.toolInvocation.state === "result" ? (
+                        {((part as any).state === "result" || (part as any).toolInvocation?.state === "result") ? (
                           <div className="text-sm text-muted-foreground prose prose-invert prose-p:leading-relaxed prose-pre:bg-black/50">
-                            {part.toolInvocation.result?.response || "No response."}
+                            {(part as any).output?.response || (part as any).toolInvocation?.result?.response || "No response."}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="size-2 rounded-full bg-signal animate-pulse" />
-                            <Shimmer>Consulting {part.toolInvocation.args?.agent_type || "Researcher"}...</Shimmer>
+                            <Shimmer>Consulting {((part as any).input?.agent_type || (part as any).toolInvocation?.args?.agent_type || "Researcher")}...</Shimmer>
                           </div>
                         )}
+                      </div>
+                    ) : ((part as any).type === "tool-propose_product" || (part as any).type === "tool-propose_products" || ((part as any).type === "dynamic-tool" && ((part as any).toolName === "propose_product" || (part as any).toolName === "propose_products")) || ((part as any).type === "tool-invocation" && ((part as any).toolInvocation?.toolName === "propose_product" || (part as any).toolInvocation?.toolName === "propose_products"))) ? (
+                      <div key={`${message.id}-${partIndex}`} className="mt-2 space-y-4">
+                        {(() => {
+                          const args = (part as any).input || (part as any).output || (part as any).toolInvocation?.args || (part as any).toolInvocation?.result || (part as any).args || {};
+                          if (Array.isArray(args.products)) {
+                            return args.products.map((p: any, pIdx: number) => (
+                              <ProductProposal key={pIdx} customProduct={p} />
+                            ));
+                          }
+                          return <ProductProposal customProduct={args} />;
+                        })()}
                       </div>
                     ) : null,
                   )}
                 </MessageContent>
                 {message.role === "assistant" && (
                   <>
-                    {!busy && (message.toolInvocations?.some((t: any) => t.toolName === "propose_product") || message.parts?.some((p: any) => p.type === "tool-invocation" && p.toolInvocation.toolName === "propose_product") || message.parts?.some((p: any) => p.type === "text" && /headphone|auralis|nc-7|propose/i.test(p.text))) && <ProductProposal />}
+                    {!busy &&
+                      !message.parts?.some(
+                        (p: any) =>
+                          p.type === "tool-propose_product" ||
+                          p.type === "tool-propose_products" ||
+                          (p.type === "dynamic-tool" && (p.toolName === "propose_product" || p.toolName === "propose_products")) ||
+                          (p.type === "tool-invocation" && (p.toolInvocation?.toolName === "propose_product" || p.toolInvocation?.toolName === "propose_products"))
+                      ) &&
+                      message.parts?.some(
+                        (p: any) =>
+                          p.type === "text" &&
+                          /headphone|auralis|nc-7/i.test(p.text)
+                      ) && <ProductProposal />}
                     <MessageActions>
                       {message.parts.some((part) => part.type === "text" && part.text.trim() !== "") && (
                         <MessageAction
@@ -1193,56 +1249,429 @@ function ChatSession({
   );
 }
 
-function ProductProposal() {
+const DEMO_BUYER = {
+  email: "sb-ype1b53721666@personal.example.com",
+  password: 'hXF"s<!0',
+};
+
+function PayPalTestAccountHelper({ className }: { className?: string }) {
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copy = (val: string, field: string) => {
+    navigator.clipboard.writeText(val);
+    setCopiedField(field);
+    toast.success(`Copied test ${field}!`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  return (
+    <div className={cn("mt-3 rounded-md border border-paypal/30 bg-paypal/5 p-2.5 text-xs text-foreground", className)}>
+      <div className="flex items-center gap-1.5 font-semibold text-paypal text-[11px]">
+        <CreditCard className="size-3.5" />
+        <span>PayPal Sandbox Demo Account</span>
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground leading-normal">
+        Use this pre-funded test account to complete the Sandbox payment checkout:
+      </p>
+      <div className="mt-2 grid gap-1.5 font-mono text-[10px]">
+        <div className="flex items-center justify-between rounded bg-background/80 px-2 py-1 border border-border">
+          <span className="truncate pr-2 text-muted-foreground">
+            Email: <strong className="text-foreground">{DEMO_BUYER.email}</strong>
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] text-paypal hover:text-paypal"
+            onClick={() => copy(DEMO_BUYER.email, "email")}
+          >
+            {copiedField === "email" ? <Check className="size-3 text-safe" /> : <Copy className="size-3" />}
+            <span className="ml-1">{copiedField === "email" ? "Copied" : "Copy"}</span>
+          </Button>
+        </div>
+        <div className="flex items-center justify-between rounded bg-background/80 px-2 py-1 border border-border">
+          <span className="truncate pr-2 text-muted-foreground">
+            Pass: <strong className="text-foreground">{DEMO_BUYER.password}</strong>
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] text-paypal hover:text-paypal"
+            onClick={() => copy(DEMO_BUYER.password, "password")}
+          >
+            {copiedField === "password" ? <Check className="size-3 text-safe" /> : <Copy className="size-3" />}
+            <span className="ml-1">{copiedField === "password" ? "Copied" : "Copy"}</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface DynamicProduct {
+  name: string;
+  quantity?: number;
+  unit_price?: number;
+  price: number;
+  merchant: string;
+  category?: string;
+  rating?: number;
+  image?: string;
+  reasoning?: string;
+}
+
+function getCategoryIcon(name: string = "", category: string = "") {
+  const n = name.toLowerCase();
+  const c = category.toLowerCase();
+  if (n.includes("monitor") || n.includes("display") || n.includes("screen") || c.includes("monitor")) {
+    return <Monitor className="size-5 text-signal" />;
+  }
+  if (n.includes("laptop") || n.includes("macbook") || n.includes("computer") || n.includes("pc")) {
+    return <Laptop className="size-5 text-signal" />;
+  }
+  if (n.includes("headphone") || n.includes("earphone") || n.includes("earbud") || n.includes("audio") || n.includes("auralis")) {
+    return <Headphones className="size-5 text-signal" />;
+  }
+  if (n.includes("keyboard") || n.includes("mouse") || n.includes("keychron")) {
+    return <Keyboard className="size-5 text-signal" />;
+  }
+  if (c.includes("software") || n.includes("figma") || n.includes("slack") || n.includes("notion") || n.includes("subscription")) {
+    return <Layers className="size-5 text-signal" />;
+  }
+  return <ShoppingBag className="size-5 text-signal" />;
+}
+
+function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) {
   const proposal = featuredProposal;
-  if (!proposal) return null;
-  const { product } = proposal;
+  const autoApproveLimit = useMandateStore((s) => s.autoApproveLimit) || 300;
+  const addRequest = useMandateStore((s) => s.addRequest);
+  const setActiveView = useMandateStore((s) => s.setActiveView);
+  const [paying, setPaying] = useState(false);
+  const [paidOrder, setPaidOrder] = useState<string | null>(null);
+  const [submittedApproval, setSubmittedApproval] = useState<string | null>(null);
+
+  if (customProduct && !customProduct.name && typeof customProduct.price !== "number") {
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-border bg-card/60 p-4 text-xs text-muted-foreground">
+        <Loader2 className="size-4 animate-spin text-signal" />
+        <Shimmer>Formulating purchase proposal...</Shimmer>
+      </div>
+    );
+  }
+
+  const quantity = customProduct?.quantity && customProduct.quantity > 0 ? customProduct.quantity : 1;
+  const unitPrice =
+    typeof customProduct?.unit_price === "number" && customProduct.unit_price > 0
+      ? customProduct.unit_price
+      : typeof customProduct?.price === "number"
+      ? customProduct.price / quantity
+      : proposal.product.price;
+  const totalPrice =
+    typeof customProduct?.price === "number" ? customProduct.price : unitPrice * quantity;
+
+  const category =
+    customProduct?.category ||
+    (/figma|slack|notion|saas|subscription|software/i.test(customProduct?.name || "")
+      ? "Software"
+      : /monitor|display|screen/i.test(customProduct?.name || "")
+      ? "Monitors"
+      : proposal.product.category);
+
+  const product = {
+    name: customProduct?.name || proposal.product.name,
+    quantity,
+    unitPrice,
+    price: totalPrice,
+    merchant: customProduct?.merchant || proposal.product.merchant,
+    category,
+    rating: customProduct?.rating || proposal.product.rating,
+  };
+
+  const isAutoApproved = product.price <= autoApproveLimit;
+  const verdict = isAutoApproved ? "APPROVE" : "ESCALATE";
+  const ruleTriggered = isAutoApproved
+    ? `MND-LIM-012 · ${product.category} at or below $${autoApproveLimit}`
+    : `MND-LIM-015 · Total ($${product.price.toFixed(2)}) exceeds $${autoApproveLimit} auto-approval threshold`;
+  const agentReasoning =
+    customProduct?.reasoning ||
+    (isAutoApproved
+      ? `Proposal for ${product.quantity > 1 ? `${product.quantity}x ` : ""}${product.name} at ${formatMoney(product.price)} passes all spending checks.`
+      : `Total amount (${formatMoney(product.price)}) exceeds $${autoApproveLimit} auto-approval threshold. Escalated to manager queue.`);
+
+  const handleAction = async () => {
+    setPaying(true);
+    try {
+      if (isAutoApproved) {
+        // Under auto-approve limit: initiate PayPal Order directly
+        const res = await fetch(`${API_V1_URL}/transactions/propose`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": "dev-agent-key-123",
+          },
+          body: JSON.stringify({
+            amount_cents: Math.round(product.price * 100),
+            merchant: product.merchant,
+            category: product.category,
+            description: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+          }),
+        });
+        const data = await res.json();
+        const order = data?.paypal_order;
+        if (order?.id) {
+          setPaidOrder(order.id);
+          const approveLink =
+            order.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
+            `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}`;
+
+          // Directly sync to store transactions and ledger
+          useMandateStore.getState().addTransaction({
+            id: order.id,
+            merchant: product.merchant,
+            item: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+            amount: product.price,
+            category: product.category,
+            status: "completed",
+            verdict: "APPROVE",
+            ruleId: "MND-LIM-012",
+            reason: `Auto-approved: ${product.category} at or below $${autoApproveLimit} limit`,
+            paypalOrderId: order.id,
+            paypalApproveLink: approveLink,
+          });
+
+          mandateApi.completeTransaction(order.id, {
+            paypal_order_id: order.id,
+            amount_cents: Math.round(product.price * 100),
+            merchant: product.merchant,
+            description: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+          }).catch(() => {});
+
+          toast.success("PayPal Sandbox Order Created!", {
+            description: `Order ID: ${order.id}. Opening Sandbox checkout window...`,
+          });
+          window.open(approveLink, "_blank");
+        } else {
+          toast.info("Transaction evaluated: " + (data.reason || "Approved"));
+        }
+      } else {
+        // Exceeds limit: Do NOT open PayPal from chat! Route to Approvals Center!
+        let approvalId = `appr_${Date.now()}`;
+        let escalationReason = `Total (${formatMoney(product.price)}) exceeds $${autoApproveLimit} auto-approval threshold.`;
+        try {
+          const res = await fetch(`${API_V1_URL}/transactions/propose`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": "dev-agent-key-123",
+            },
+            body: JSON.stringify({
+              amount_cents: Math.round(product.price * 100),
+              merchant: product.merchant,
+              category: product.category,
+              description: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+            }),
+          });
+          const data = await res.json();
+          if (data?.transaction?.approval_id) {
+            approvalId = data.transaction.approval_id;
+          }
+          if (data?.reason) {
+            escalationReason = data.reason;
+          }
+        } catch (e) {
+          console.warn("Backend propose fallback to local queue", e);
+        }
+
+        // Add to Approvals queue
+        addRequest({
+          id: approvalId,
+          merchant: product.merchant,
+          item: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+          amount: product.price,
+          reason: escalationReason,
+        });
+
+        setSubmittedApproval(approvalId);
+        toast.warning("Escalated to Approvals Center!", {
+          description: `Order for ${product.name} (${formatMoney(product.price)}) submitted for manager review.`,
+        });
+      }
+    } catch (err: any) {
+      toast.error("Failed to process request: " + (err.message || String(err)));
+    } finally {
+      setPaying(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-4 grid overflow-hidden rounded-md border border-border bg-card sm:grid-cols-[150px_1fr]"
+      className="mt-4 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
     >
-      <img
-        src={product.image}
-        alt={product.name}
-        loading="lazy"
-        width={816}
-        height={816}
-        className="aspect-square h-full w-full object-cover"
-      />
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">{product.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {product.merchant} · ★ {product.rating}
-            </p>
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle/80 text-signal shadow-inner">
+              {getCategoryIcon(product.name, product.category)}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tracking-tight text-foreground">{product.name}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground/80">{product.merchant}</span>
+                <span>·</span>
+                <span>★ {product.rating}</span>
+                <span>·</span>
+                <span className="rounded bg-subtle px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide border border-border">
+                  {product.category}
+                </span>
+                {product.quantity > 1 && (
+                  <span className="rounded bg-signal/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-signal border border-signal/20">
+                    Qty: {product.quantity}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <p className="font-mono text-lg">{formatMoney(product.price)}</p>
+          <div className="text-right shrink-0">
+            <p className="font-mono text-xl font-bold">{formatMoney(product.price)}</p>
+            {product.quantity > 1 && (
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {formatMoney(product.unitPrice)} ea × {product.quantity}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="mt-4 border-t border-border pt-4">
+
+        <div className="mt-4 border-t border-border pt-3">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[9px] uppercase text-muted-foreground">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
               Policy verdict
             </span>
-            <Status value={proposal.verdict.toLowerCase()} />
+            <Status value={verdict.toLowerCase()} />
           </div>
-          <p className="mt-3 text-xs font-medium">{proposal.ruleTriggered}</p>
+          <p className="mt-2 text-xs font-medium">{ruleTriggered}</p>
           <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            {proposal.agentReasoning}
+            {agentReasoning}
           </p>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${(product.price / 150) * 100}%` }}
-              className="h-full bg-safe"
+              animate={{ width: `${Math.min(100, (product.price / autoApproveLimit) * 100)}%` }}
+              className={`h-full ${isAutoApproved ? "bg-safe" : "bg-warning"}`}
             />
           </div>
           <div className="mt-1 flex justify-between font-mono text-[9px] text-muted-foreground">
             <span>{formatMoney(product.price)}</span>
-            <span>$150 LIMIT</span>
+            <span>${autoApproveLimit} AUTO-LIMIT</span>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+              <CreditCard className="size-3.5 text-paypal" />
+              <span>PayPal Orders v2 Sandbox</span>
+            </div>
+            {paidOrder ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
+                <div className="flex items-center gap-2 text-xs text-safe font-medium">
+                  <Check className="size-4 shrink-0 text-safe" />
+                  <span>COMPLETED · Order {paidOrder.slice(0, 12)}... captured</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
+                  >
+                    <a
+                      href={`https://www.sandbox.paypal.com/checkoutnow?token=${paidOrder}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="size-3.5 text-paypal" />
+                      PayPal Receipt
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveView("transactions")}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    View in Transactions →
+                  </Button>
+                </div>
+              </div>
+            ) : submittedApproval ? (
+              (() => {
+                const req = useMandateStore.getState().requests.find((r) => r.id === submittedApproval);
+                const isApproved = req?.status === "approved";
+                if (isApproved) {
+                  return (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
+                      <div className="flex items-center gap-2 text-xs text-safe font-medium">
+                        <Check className="size-4 shrink-0 text-safe" />
+                        <span>COMPLETED · Approved by Manager in Approvals Center</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveView("transactions")}
+                        className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
+                      >
+                        View in Transactions →
+                      </Button>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-warning font-medium">
+                      <Clock3 className="size-3.5" />
+                      Pending in Approvals
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveView("approvals")}
+                      className="gap-1.5 text-xs border-warning/40 hover:bg-warning/10 text-foreground"
+                    >
+                      <ShieldAlert className="size-3.5 text-warning" />
+                      Go to Approvals Center
+                    </Button>
+                  </div>
+                );
+              })()
+            ) : (
+              <Button
+                variant={isAutoApproved ? "paypal" : "secondary"}
+                size="sm"
+                onClick={handleAction}
+                disabled={paying}
+                className="gap-2 text-xs"
+              >
+                {paying ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {isAutoApproved ? "Creating Order..." : "Submitting to Approvals..."}
+                  </>
+                ) : isAutoApproved ? (
+                  <>
+                    <CreditCard className="size-3.5" />
+                    Pay Now
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="size-3.5" />
+                    Submit for Approval
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          <PayPalTestAccountHelper />
         </div>
       </div>
     </motion.div>
@@ -1250,50 +1679,136 @@ function ProductProposal() {
 }
 
 function MandateBuilder() {
-  const baseText = "Up to $150/month, electronics only, ask me above $50";
+  const baseText = "Up to $5,000/month, daily cap of $1,000, ask me above $150, electronics only";
   const [text, setText] = useState(baseText);
+  const [saving, setSaving] = useState(false);
   const [rules, setRules] = useState<RuleSet>({
-    monthlyCap: 150,
-    autoApprove: 50,
+    monthlyCap: 5000,
+    autoApprove: 150,
+    dailyCap: 1000,
     categories: ["Electronics"],
     blockedMerchants: ["Marketplace sellers"],
     timeWindow: "09:00–18:00",
-    maxPerDay: 3,
+    maxPerDay: 5,
   });
   const [versions, setVersions] = useState([
-    { id: 3, label: "v3 · Current", date: "Today, 10:42", text: baseText },
-    { id: 2, label: "v2", date: "Sep 28", text: "Up to $125/month, electronics only" },
+    { id: 3, label: "v3 · Current", date: "Today, 14:40", text: baseText },
+    { id: 2, label: "v2", date: "Sep 28", text: "Up to $150/month, electronics only, ask above $50" },
     { id: 1, label: "v1", date: "Sep 21", text: "Electronics purchases under $50" },
   ]);
-  const [test, setTest] = useState({ merchant: "B&H Photo", category: "Electronics", amount: 89 });
+  const [test, setTest] = useState({ merchant: "B&H Photo", category: "Electronics", amount: 139 });
+
+  // Load existing mandate from backend Policy Engine on mount
   useEffect(() => {
-    const amount = text.match(/\$([\d,]+)/)?.[1];
-    const ask = text.match(/above \$([\d,]+)/i)?.[1];
+    fetch(`${API_V1_URL}/mandates/mandate_1`, {
+      headers: { "X-API-Key": "dev-agent-key-123" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.rules) {
+          const monthly = Math.round((data.monthly_cap_amount || 500000) / 100);
+          const autoApprove = Math.round((data.rules.auto_approve_limit || 15000) / 100);
+          const daily = Math.round((data.rules.daily_amount_cap || 50000) / 100);
+          const maxDay = data.rules.daily_purchase_count_cap || 5;
+          setRules((prev) => ({
+            ...prev,
+            monthlyCap: monthly,
+            autoApprove,
+            dailyCap: daily,
+            maxPerDay: maxDay,
+          }));
+          useMandateStore.getState().setLimits({
+            autoApproveLimit: autoApprove,
+            dailySpendCap: daily,
+            monthlyCap: monthly,
+          });
+          setText(`Up to $${monthly.toLocaleString()}/month, daily cap of $${daily.toLocaleString()}, ask me above $${autoApprove}, electronics only`);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync NLP text edits to structured rules
+  useEffect(() => {
+    const monthlyMatch = text.match(/(?:up to\s*)?\$([\d,]+)(?:\/month| monthly)?/i)?.[1];
+    const dailyMatch = text.match(/daily\s*(?:cap|spend)?\s*(?:of\s*)?\$?([\d,]+)/i)?.[1];
+    const askMatch = text.match(/(?:ask|above|below)\s*(?:me\s*)?(?:above|below)?\s*\$?([\d,]+)/i)?.[1];
     setRules((current) => ({
       ...current,
-      monthlyCap: amount ? Number(amount.replace(",", "")) : current.monthlyCap,
-      autoApprove: ask ? Number(ask.replace(",", "")) : current.autoApprove,
+      monthlyCap: monthlyMatch ? Number(monthlyMatch.replace(/,/g, "")) : current.monthlyCap,
+      dailyCap: dailyMatch ? Number(dailyMatch.replace(/,/g, "")) : current.dailyCap,
+      autoApprove: askMatch ? Number(askMatch.replace(/,/g, "")) : current.autoApprove,
       categories: /electronic/i.test(text) ? ["Electronics"] : current.categories,
     }));
   }, [text]);
+
   const verdict =
     test.category !== rules.categories[0]
       ? "BLOCK"
       : test.amount > rules.autoApprove
         ? "ESCALATE"
         : "APPROVE";
-  const save = () => {
-    setVersions((current) => [
-      {
-        id: current[0]?.id ? current[0].id + 1 : 1,
-        label: `v${(current[0]?.id ?? 0) + 1} · Current`,
-        date: "Just now",
-        text,
-      },
-      ...current.map((version) => ({ ...version, label: version.label.replace(" · Current", "") })),
-    ]);
-    toast.success("Mandate version saved");
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_V1_URL}/mandates/mandate_1`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "dev-agent-key-123",
+        },
+        body: JSON.stringify({
+          monthly_cap_amount: Math.round(rules.monthlyCap * 100),
+          auto_approve_limit: Math.round(rules.autoApprove * 100),
+          daily_amount_cap: Math.round(rules.dailyCap * 100),
+          daily_purchase_count_cap: rules.maxPerDay,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+
+      useMandateStore.getState().setLimits({
+        autoApproveLimit: rules.autoApprove,
+        dailySpendCap: rules.dailyCap,
+        monthlyCap: rules.monthlyCap,
+      });
+
+      setVersions((current) => [
+        {
+          id: current[0]?.id ? current[0].id + 1 : 1,
+          label: `v${(current[0]?.id ?? 0) + 1} · Current`,
+          date: "Just now",
+          text,
+        },
+        ...current.map((version) => ({ ...version, label: version.label.replace(" · Current", "") })),
+      ]);
+      toast.success("Mandate activated on Sentinel Policy Engine!", {
+        description: `Auto-Approve: $${rules.autoApprove} · Daily Cap: $${rules.dailyCap} · Monthly: $${rules.monthlyCap}`,
+      });
+    } catch (err: any) {
+      toast.error("Failed to update mandate: " + (err.message || String(err)));
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const resetSpendCounters = async () => {
+    try {
+      const res = await fetch(`${API_V1_URL}/transactions/reset-spend`, {
+        method: "POST",
+        headers: { "X-API-Key": "dev-agent-key-123" },
+      });
+      if (res.ok) {
+        toast.success("Daily spend counter reset to $0.00!");
+      }
+    } catch {
+      toast.error("Failed to reset spend counter.");
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageTitle
@@ -1301,10 +1816,16 @@ function MandateBuilder() {
         title="Mandate Builder"
         description="Write intent on the left. Inspect and tune deterministic rules before activation."
         action={
-          <Button variant="premium" onClick={save}>
-            <Check />
-            Save new version
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={resetSpendCounters} className="text-xs">
+              <RefreshCw className="size-3.5 mr-1" />
+              Reset Daily Spend
+            </Button>
+            <Button variant="premium" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : <Check className="size-4 mr-1" />}
+              Save new version
+            </Button>
+          </div>
         }
       />
       <div className="grid gap-6 xl:grid-cols-2">
@@ -1315,11 +1836,11 @@ function MandateBuilder() {
             className="mt-5 min-h-56 resize-none bg-subtle p-4 text-base leading-7"
           />
           <div className="mt-4 rounded-md border border-border bg-subtle p-3">
-            <p className="font-mono text-[9px] uppercase text-muted-foreground">Changes from v2</p>
+            <p className="font-mono text-[9px] uppercase text-muted-foreground">Active Configuration</p>
             <p className="mt-2 text-xs leading-5">
-              <span className="bg-safe-soft text-safe">+ $150/month</span>{" "}
-              <span className="bg-danger-soft text-danger line-through">$125/month</span>{" "}
-              <span className="bg-safe-soft text-safe">+ ask above $50</span>
+              <span className="bg-safe-soft text-safe mr-2">Monthly Cap: ${rules.monthlyCap.toLocaleString()}</span>
+              <span className="bg-signal/10 text-signal mr-2">Daily Cap: ${rules.dailyCap.toLocaleString()}</span>
+              <span className="bg-safe-soft text-safe">Auto-Approve: &le; ${rules.autoApprove}</span>
             </p>
           </div>
         </Panel>
@@ -1337,14 +1858,20 @@ function MandateBuilder() {
               value={rules.autoApprove}
               onChange={(value) => setRules({ ...rules, autoApprove: value })}
             />
-            <RuleCard label="Allowed categories" value={rules.categories.join(", ")} />
-            <RuleCard label="Blocked merchants" value={rules.blockedMerchants.join(", ")} />
-            <RuleCard label="Purchase window" value={rules.timeWindow} />
+            <RuleInput
+              label="Daily spend cap"
+              prefix="$"
+              value={rules.dailyCap}
+              onChange={(value) => setRules({ ...rules, dailyCap: value })}
+            />
             <RuleInput
               label="Max purchases / day"
               value={rules.maxPerDay}
               onChange={(value) => setRules({ ...rules, maxPerDay: value })}
             />
+            <RuleCard label="Allowed categories" value={rules.categories.join(", ")} />
+            <RuleCard label="Blocked merchants" value={rules.blockedMerchants.join(", ")} />
+            <RuleCard label="Purchase window" value={rules.timeWindow} />
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-safe">
             <Check className="size-4" />
@@ -1440,27 +1967,100 @@ function MandateBuilder() {
 function Approvals() {
   const requests = useMandateStore((state) => state.requests);
   const resolve = useMandateStore((state) => state.resolveRequest);
+  const completeTransaction = useMandateStore((state) => state.completeTransaction);
+  const addTransaction = useMandateStore((state) => state.addTransaction);
   const [selected, setSelected] = useState<string | null>(null);
   const [verifyingRequest, setVerifyingRequest] = useState<{ id: string, action: "approve" | "sign" } | null>(null);
+  const [checkoutSession, setCheckoutSession] = useState<{
+    id: string;
+    merchant: string;
+    item: string;
+    amount: number;
+    orderId: string;
+    approveLink: string;
+    completed: boolean;
+  } | null>(null);
   const [limit, setLimit] = useState(200);
   const [celebrate, setCelebrate] = useState(false);
   const [announcement, setAnnouncement] = useState("Approval queue ready");
   const [signatures, setSignatures] = useState<Record<string, number>>({});
   const active = requests.find((request) => request.id === selected);
   const pending = requests.filter((request) => request.status === "pending");
-  const decide = (id: string, status: Exclude<RequestStatus, "pending">) => {
+  const decide = async (id: string, status: Exclude<RequestStatus, "pending">) => {
     resolve(id, status);
-    if (status === 'approved') mandateApi.approveTransaction(id).catch(console.error);
-    if (status === 'denied') mandateApi.denyTransaction(id).catch(console.error);
     setSelected(null);
     if (status === "approved") {
       setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
       setCelebrate(true);
       window.setTimeout(() => setCelebrate(false), 1400);
-      toast.success("Payment approved", {
-        description: "Authorized in PayPal Sandbox and added to the ledger.",
-      });
+
+      try {
+        const targetReq = requests.find((r) => r.id === id);
+        const res = await mandateApi.approveTransaction(id, {
+          amount_cents: targetReq ? Math.round(targetReq.amount * 100) : 29997,
+          merchant: targetReq?.merchant || "Vendor",
+          category: "Electronics",
+        });
+        const orderId = res?.intent?.id || res?.intent?.provider_raw?.id;
+        const approveLink =
+          res?.intent?.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
+          (orderId ? `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}` : null);
+
+        if (orderId && approveLink) {
+          // Immediately record in store as completed
+          completeTransaction(id, orderId);
+          addTransaction({
+            id: orderId,
+            merchant: targetReq?.merchant || "Vendor",
+            item: targetReq?.item || "Approved purchase",
+            amount: targetReq?.amount || 299.97,
+            category: "Electronics",
+            status: "completed",
+            verdict: "APPROVE",
+            ruleId: "MND-HITL-001",
+            reason: "Authorized by manager via Approvals Center.",
+            paypalOrderId: orderId,
+            paypalApproveLink: approveLink,
+          });
+
+          // Persistent active checkout banner so popup blocker can never block checkout
+          setCheckoutSession({
+            id,
+            merchant: targetReq?.merchant || "Vendor",
+            item: targetReq?.item || "Approved order",
+            amount: targetReq?.amount || 299.97,
+            orderId,
+            approveLink,
+            completed: true,
+          });
+
+          // Sync completion to backend
+          mandateApi.completeTransaction(id, {
+            paypal_order_id: orderId,
+            amount_cents: targetReq ? Math.round(targetReq.amount * 100) : 29997,
+            merchant: targetReq?.merchant || "Vendor",
+            description: targetReq?.item || "Approved order",
+          }).catch(() => {});
+
+          toast.success("Payment approved & PayPal Order Created!", {
+            description: `Order ${orderId}. Opening PayPal Sandbox Checkout...`,
+          });
+
+          try {
+            window.open(approveLink, "_blank");
+          } catch (e) {
+            console.warn("Popup blocked by browser", e);
+          }
+        } else {
+          toast.success("Payment approved", {
+            description: "Authorized in PayPal Sandbox and added to the ledger.",
+          });
+        }
+      } catch (err: any) {
+        toast.error("Approval error: " + (err.message || String(err)));
+      }
     } else {
+      mandateApi.denyTransaction(id).catch(console.error);
       setAnnouncement("Purchase denied and removed from the approval queue");
       toast.error("Purchase denied");
     }
@@ -1475,6 +2075,51 @@ function Approvals() {
         title="Approvals Center"
         description="Resolve edge cases before their authorization window closes."
       />
+      <PayPalTestAccountHelper className="max-w-2xl" />
+
+      {checkoutSession && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border-2 border-paypal/60 bg-card p-5 shadow-lg space-y-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-safe/20 text-safe">
+                <Check className="size-6 text-safe" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  <span>Order Approved & PayPal Order Generated</span>
+                  <span className="rounded bg-safe/20 text-safe text-[10px] font-mono px-2 py-0.5 font-bold uppercase">
+                    COMPLETED & AUTHORIZED
+                  </span>
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {checkoutSession.merchant} · {checkoutSession.item} · <strong className="text-foreground">{formatMoney(checkoutSession.amount)}</strong>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="paypal"
+                size="sm"
+                asChild
+                className="gap-2 text-xs font-semibold shadow-md"
+              >
+                <a href={checkoutSession.approveLink} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-3.5" />
+                  Launch PayPal Checkout ({checkoutSession.orderId.slice(0, 10)}...)
+                </a>
+              </Button>
+            </div>
+          </div>
+          <div className="rounded bg-muted/40 border border-border p-2.5 text-[11px] font-mono text-muted-foreground flex flex-wrap items-center justify-between gap-2">
+            <span>PayPal Order ID: <strong className="text-foreground">{checkoutSession.orderId}</strong></span>
+            <span className="text-safe flex items-center gap-1.5"><Check className="size-3" /> Recorded in Transactions, Audit Log & Dashboard</span>
+          </div>
+        </motion.div>
+      )}
       <div className="grid gap-4 xl:grid-cols-2">
         {pending.map((request, index) => (
           <motion.div

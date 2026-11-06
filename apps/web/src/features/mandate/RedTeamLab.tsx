@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { redTeamScenarios } from "./mock";
-import { mandateApi } from "./api";
+import { mandateApi, API_V1_URL } from "./api";
 
 type Scenario = (typeof redTeamScenarios)[number];
 
@@ -292,7 +292,7 @@ function LiveThreatStream() {
     // Only connect if we are not using mocks
     if (import.meta.env.VITE_USE_MOCKS === "true") return;
 
-    const eventSource = new EventSource(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/redteam/security-stream`);
+    const eventSource = new EventSource(`${API_V1_URL}/redteam/security-stream`);
     
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -458,7 +458,7 @@ function SemanticInjectionCard() {
     if (!prompt) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/ml/check-injection", {
+      const res = await fetch(`${API_V1_URL}/ml/check-injection`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })

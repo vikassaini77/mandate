@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { API_V1_URL } from "./api";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,12 +34,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { auditRecords, type AuditRecord } from "./mock";
+import { useMandateStore } from "./store";
 import { VerdictBadge } from "./VerdictBadge";
 
 const ROW_HEIGHT = 57;
 const VIEWPORT_HEIGHT = 456;
 
 export function AuditLog() {
+  const storeTransactions = useMandateStore((state) => state.transactions);
   const [mode, setMode] = useState<"table" | "timeline">("table");
   const [query, setQuery] = useState("");
   const [verdict, setVerdict] = useState("all");
@@ -49,12 +52,31 @@ export function AuditLog() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const merchants = useMemo(() => [...new Set(auditRecords.map((row) => row.merchant))], []);
-  const categories = useMemo(() => [...new Set(auditRecords.map((row) => row.category))], []);
-  const rules = useMemo(() => [...new Set(auditRecords.map((row) => row.ruleCode))], []);
+
+  const dynamicAuditRecords: AuditRecord[] = useMemo(() => {
+    const storeRecords: AuditRecord[] = storeTransactions.map((tx) => ({
+      id: tx.id,
+      occurredAt: tx.date || new Date().toISOString(),
+      merchant: tx.merchant,
+      item: tx.item,
+      category: tx.category || "Electronics",
+      amount: tx.amount,
+      decision: tx.verdict,
+      rule: tx.reason,
+      ruleCode: tx.ruleId,
+      reasoning: tx.reason,
+      paypalOrderId: tx.paypalOrderId,
+      sha256: `sha256-${(tx.id || "tx").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}...`,
+    }));
+    return [...storeRecords, ...auditRecords];
+  }, [storeTransactions]);
+
+  const merchants = useMemo(() => [...new Set(dynamicAuditRecords.map((row) => row.merchant))], [dynamicAuditRecords]);
+  const categories = useMemo(() => [...new Set(dynamicAuditRecords.map((row) => row.category))], [dynamicAuditRecords]);
+  const rules = useMemo(() => [...new Set(dynamicAuditRecords.map((row) => row.ruleCode))], [dynamicAuditRecords]);
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return auditRecords.filter((row) => {
+    return dynamicAuditRecords.filter((row) => {
       const searchable =
         `${row.id} ${row.merchant} ${row.item} ${row.category} ${row.rule} ${row.ruleCode} ${row.reasoning} ${row.paypalOrderId ?? ""}`.toLowerCase();
       return (
@@ -66,7 +88,7 @@ export function AuditLog() {
         (date !== "24h" || Date.now() - new Date(row.occurredAt).getTime() < 86_400_000)
       );
     });
-  }, [category, date, merchant, query, rule, verdict]);
+  }, [category, date, dynamicAuditRecords, merchant, query, rule, verdict]);
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 3);
   const end = Math.min(rows.length, Math.ceil((scrollTop + VIEWPORT_HEIGHT) / ROW_HEIGHT) + 3);
   const visibleRows = rows.slice(start, end);
@@ -389,7 +411,7 @@ function CitationEmail({ blockContext }: { blockContext: AuditRecord }) {
   const generateEmail = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/agent/generate-citation", {
+      const res = await fetch(`${API_V1_URL}/agent/generate-citation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

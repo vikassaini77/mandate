@@ -110,35 +110,11 @@ MANDATE is built from the ground up to showcase modern fintech patterns using Pa
 ### 2. PayPal Webhook Validation
 The gateway supports webhook signature verification (`PAYPAL-AUTH-ALGO`, `PAYPAL-CERT-URL`, `PAYPAL-TRANSMISSION-ID`, `PAYPAL-TRANSMISSION-SIG`) to handle events such as `CHECKOUT.ORDER.COMPLETED` and `BILLING.SUBSCRIPTION.ACTIVATED`.
 
-### 3. Zero-Config Mock Mode (`MOCK_PAYPAL=true`)
-To ensure hackathon judges can review the application without requiring a PayPal Developer Sandbox account, MANDATE includes a high-fidelity mock mode:
-```env
-# Set to 'true' for offline evaluation with zero external dependencies
-MOCK_PAYPAL=true
-```
-When enabled, the client simulates real PayPal order IDs (`PAYPAL-SBX-XXXX`), capture receipts, and refund flows instantly.
+### 3. PayPal Sandbox Test Login
+To log into PayPal Sandbox and complete payments, use this test account:
+* **Email:** `sb-ype1b53721666@personal.example.com`
+* **Password:** `hXF"s<!0`
 
-### 4. Setting Up Real PayPal Sandbox Credentials (For Teammates & Developers)
-While judges can evaluate the application out-of-the-box with `MOCK_PAYPAL=true`, team members and developers who want to test end-to-end payments against live PayPal Sandbox APIs can get free credentials in 2 minutes:
-
-1. **Obtain Sandbox API Keys:**
-   * Go to [developer.paypal.com](https://developer.paypal.com/) and log in (using any personal or business PayPal account).
-   * Go to **Apps & Credentials** (ensure the **Sandbox** toggle is selected).
-   * Click **Create App** (App Type: *Merchant*, Name: `Mandate Sandbox`).
-   * Copy the generated **Client ID** and **Secret**.
-   * In your `.env` file, configure:
-     ```env
-     MOCK_PAYPAL=false
-     PAYPAL_CLIENT_ID=your_sandbox_client_id
-     PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
-     ```
-
-2. **Obtain a Test Buyer Account to "Pay" in Sandbox:**
-   * In the PayPal Developer Dashboard, navigate to **Testing Tools** ➔ **Sandbox Accounts**.
-   * Locate the pre-generated **Personal (Buyer)** account (e.g. `sb-buyerXXXXX@personal.example.com`).
-   * Click the three dots `...` next to it ➔ **View/Edit account**.
-   * Copy the **Email ID** and the **System Generated Password**.
-   * When an order's checkout approval link is opened, log in with this test buyer account to approve and settle the simulated payment with zero real money spent.
 
 ---
 
@@ -269,16 +245,16 @@ cd mandate
 ```
 
 ### 2. Environment Configuration
-Copy the sample environment file. By default, `MOCK_PAYPAL=true` is enabled so you can run immediately without credentials:
+Copy the sample environment file:
 ```bash
 cp .env.example .env
 ```
 
 | Variable | Default | Purpose |
 | :--- | :--- | :--- |
-| `MOCK_PAYPAL` | `true` | Runs offline with simulated PayPal Orders v2 sandbox receipts. |
-| `PAYPAL_CLIENT_ID` | `mock_client_id` | Your PayPal Sandbox Client ID (optional if mock mode is on). |
-| `PAYPAL_CLIENT_SECRET`| `mock_secret` | Your PayPal Sandbox Secret (optional if mock mode is on). |
+| `MOCK_PAYPAL` | `false` | Connects directly to PayPal Orders v2 Sandbox API. |
+| `PAYPAL_CLIENT_ID` | `ARvJKR...` | PayPal Sandbox Client ID. |
+| `PAYPAL_CLIENT_SECRET`| `EKfTRd...` | PayPal Sandbox Client Secret. |
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` | PayPal REST API endpoint. |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./mandate.db` | Local SQLite or PostgreSQL connection string. |
 | `SLACK_WEBHOOK_URL` | `None` | Optional incoming webhook for Human-in-the-Loop escalations. |
@@ -306,7 +282,7 @@ docker compose up --build
 
 ---
 
-## 🎯 3-Minute Judge Evaluation Guide (What to Test)
+## 🎯 3-Minute Interactive Demo Guide (What to Test)
 
 Once you have started the application (`http://localhost:8080`), test these 5 real-world scenarios to experience MANDATE's complete safety pipeline:
 

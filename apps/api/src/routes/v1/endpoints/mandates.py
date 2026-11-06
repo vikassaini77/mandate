@@ -1,4 +1,5 @@
-from typing import Dict
+from typing import Dict, List, Optional
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException
 from packages.database.hash_chain import global_audit_chain
@@ -8,12 +9,22 @@ from apps.api.src.services.auth import Principal, Role, get_current_principal, r
 
 router = APIRouter()
 
+class UpdateMandateRequest(BaseModel):
+    monthly_cap_amount: Optional[int] = None
+    currency: Optional[str] = "USD"
+    auto_approve_limit: Optional[int] = None
+    daily_amount_cap: Optional[int] = None
+    daily_purchase_count_cap: Optional[int] = None
+    allowed_categories: Optional[List[str]] = None
+    blocked_categories: Optional[List[str]] = None
+    blocked_merchants: Optional[List[str]] = None
+
 # Mock global store for the Hackathon/Demo
 _MOCK_MANDATES: Dict[str, MandateState] = {
     "mandate_1": MandateState(
         is_active=True,
         monthly_cap_amount=500000,
-        rules=RuleConfig(auto_approve_limit=15000)
+        rules=RuleConfig(auto_approve_limit=15000, daily_amount_cap=50000)
     )
 }
 
@@ -26,6 +37,50 @@ async def get_mandate(mandate_id: str):
     if mandate_id not in _MOCK_MANDATES:
         raise HTTPException(status_code=404, detail="Mandate not found")
     return _MOCK_MANDATES[mandate_id].model_dump()
+
+@router.put('/{mandate_id}')
+async def update_mandate(
+    mandate_id: str,
+    payload: UpdateMandateRequest,
+    principal: Principal = Depends(get_current_principal)
+):
+    """
+    Live Policy Engine update endpoint:
+    Updates governing rules (auto-approve limit, daily spend cap, monthly budget, etc.)
+    immediately affecting subsequent transaction evaluations.
+    """
+    if mandate_id not in _MOCK_MANDATES:
+        _MOCK_MANDATES[mandate_id] = MandateState(
+            is_active=True,
+            monthly_cap_amount=payload.monthly_cap_amount or 500000,
+            rules=RuleConfig()
+        )
+    
+    mandate = _MOCK_MANDATES[mandate_id]
+    if payload.monthly_cap_amount is not None:
+        mandate.monthly_cap_amount = payload.monthly_cap_amount
+    if payload.currency is not None:
+        mandate.currency = payload.currency
+        
+    rules = mandate.rules
+    if payload.auto_approve_limit is not None:
+        rules.auto_approve_limit = payload.auto_approve_limit
+    if payload.daily_amount_cap is not None:
+        rules.daily_amount_cap = payload.daily_amount_cap
+    if payload.daily_purchase_count_cap is not None:
+        rules.daily_purchase_count_cap = payload.daily_purchase_count_cap
+    if payload.allowed_categories is not None:
+        rules.allowed_categories = payload.allowed_categories
+    if payload.blocked_categories is not None:
+        rules.blocked_categories = payload.blocked_categories
+    if payload.blocked_merchants is not None:
+        rules.blocked_merchants = payload.blocked_merchants
+
+    return {
+        "status": "success",
+        "message": f"Mandate {mandate_id} successfully updated on Policy Engine.",
+        "data": mandate.model_dump()
+    }
 
 @router.post('/{mandate_id}/kill')
 async def kill_switch(

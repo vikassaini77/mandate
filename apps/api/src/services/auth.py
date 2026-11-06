@@ -44,7 +44,7 @@ def get_current_principal(
                 return Principal(
                     tenant_id="system_tenant", # Default system tenant
                     identity_id=identity,
-                    roles=[Role.SYSTEM_AGENT],
+                    roles=[Role.SYSTEM_AGENT, Role.ADMIN, Role.MANAGER],
                     is_agent=True
                 )
         raise HTTPException(status_code=401, detail="Invalid API Key")

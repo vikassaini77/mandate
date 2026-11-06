@@ -20,6 +20,13 @@ export interface PurchaseRequest {
 interface MandateState {
   mandates: Mandate[];
   requests: PurchaseRequest[];
+  autoApproveLimit: number;
+  dailySpendCap: number;
+  monthlyCap: number;
+  activeView: string;
+  setActiveView: (view: string) => void;
+  setLimits: (limits: { autoApproveLimit?: number; dailySpendCap?: number; monthlyCap?: number }) => void;
+  addRequest: (request: { id?: string; merchant: string; item: string; amount: number; reason?: string }) => void;
   localAI: boolean;
   setLocalAI: (enabled: boolean) => void;
   addMandate: (text: string, limit: number) => void;
@@ -34,6 +41,28 @@ interface MandateState {
 }
 
 export const useMandateStore = create<MandateState>((set) => ({
+  autoApproveLimit: 300,
+  dailySpendCap: 1000,
+  monthlyCap: 5000,
+  activeView: "dashboard",
+  setActiveView: (activeView) => set({ activeView }),
+  setLimits: (limits) => set((state) => ({ ...state, ...limits })),
+  addRequest: (request) =>
+    set((state) => ({
+      requests: [
+        {
+          id: request.id || `appr_${Date.now()}`,
+          merchant: request.merchant,
+          item: request.item,
+          amount: request.amount,
+          time: "Just now",
+          reason: request.reason || "Escalated to human-in-the-loop approval queue.",
+          status: "pending",
+          confidence: 92,
+        },
+        ...state.requests,
+      ],
+    })),
   localAI: false,
   setLocalAI: (enabled) => set({ localAI: enabled }),
   theme: "Dark",

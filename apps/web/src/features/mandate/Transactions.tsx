@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useMandateStore, type MandateTransaction } from "./store";
+import { mandateApi } from "./api";
 import {
   ArrowDownLeft,
   CheckCircle2,
@@ -113,13 +115,60 @@ const seed: Payment[] = [
 ];
 
 export function Transactions() {
-  const [payments, setPayments] = useState(seed);
+  const storeTransactions = useMandateStore((state) => state.transactions);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<Payment | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
   const [revealed, setRevealed] = useState(false);
+
+  // Sync latest transactions from backend
+  useEffect(() => {
+    mandateApi.getTransactions().then((res) => {
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const backendTxs: MandateTransaction[] = res.data.map((t: any) => ({
+          id: t.paypal_order?.id || t.id,
+          merchant: t.merchant,
+          item: t.description || `${t.category} purchase`,
+          amount: (t.amount_cents || 0) / 100,
+          category: t.category || "General",
+          status: (t.status === "COMPLETED" ? "completed" : t.status === "PENDING_APPROVAL" ? "pending" : t.status === "BLOCKED" ? "denied" : "completed") as PaymentStatus,
+          verdict: (t.verdict || "APPROVE") as any,
+          ruleId: t.rule_id || "MND-LIM-012",
+          reason: t.reason || "Processed via Sentinel Policy Gate",
+          date: t.timestamp ? new Date(t.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent",
+          paypalOrderId: t.paypal_order?.id,
+          employee: "You (Operator)",
+          refunded: 0,
+        }));
+        
+        // Merge with existing store transactions, deduplicating by ID
+        const existingIds = new Set(useMandateStore.getState().transactions.map((tx) => tx.id));
+        const newOnes = backendTxs.filter((tx) => !existingIds.has(tx.id));
+        if (newOnes.length > 0) {
+          useMandateStore.setState((s) => ({
+            transactions: [...newOnes, ...s.transactions]
+          }));
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const payments: Payment[] = useMemo(() => {
+    return storeTransactions.map((tx) => ({
+      id: tx.id,
+      merchant: tx.merchant,
+      item: tx.item,
+      amount: tx.amount,
+      status: tx.status,
+      date: tx.date,
+      mandate: tx.ruleId ? `Rule ${tx.ruleId}` : "Standard mandate",
+      verdict: `${tx.verdict} · ${tx.ruleId}`,
+      refunded: tx.refunded || 0,
+      employee: tx.employee || "You (Operator)",
+    }));
+  }, [storeTransactions]);
 
   const rows = useMemo(
     () =>

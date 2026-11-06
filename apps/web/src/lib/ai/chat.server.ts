@@ -14,6 +14,8 @@ const bodySchema = z.object({
       parts: z.array(z.unknown()),
     }),
   ),
+  autoApproveLimit: z.number().optional(),
+  dailySpendCap: z.number().optional(),
 });
 
 export async function handleAgentChat(request: Request) {
@@ -99,7 +101,7 @@ export async function handleAgentChat(request: Request) {
       apiKey: geminiApiKey,
       fetch: run.fetch,
     });
-    aiModel = google("gemini-2.5-flash");
+    aiModel = google("gemini-3.5-flash");
   } else {
     const provider = createOpenAI({
       baseURL: "https://ai.gateway.lovable.dev/v1",
@@ -110,17 +112,51 @@ export async function handleAgentChat(request: Request) {
     aiModel = provider.chat("openai/gpt-6-astra");
   }
 
+  const autoApproveLimit = typeof parsed.data.autoApproveLimit === "number" ? parsed.data.autoApproveLimit : 300;
+  const dailySpendCap = typeof parsed.data.dailySpendCap === "number" ? parsed.data.dailySpendCap : 1000;
+
   const result = streamText({
     model: aiModel,
     system:
-      "You are MANDATE's procurement agent. Help the user research purchases while treating policy as binding. Be EXTREMELY concise (under 150 words), transparent, and never claim a purchase completed. Recommend AT MOST 2 products. Compare value, merchant, rating, and explain the likely verdict. Use markdown. ALWAYS include a brief text response. Include real hyperlink URLs to Amazon, BestBuy, or the manufacturer for the recommended products. If a purchase is complex, expensive (>$500), or requires deep research, you MUST use the delegate_task tool to consult the Researcher or Negotiator sub-agent before giving your final verdict.",
+      "You are MANDATE's intelligent autonomous procurement agent. You act as an expert enterprise purchasing assistant following a natural, interactive shopping and procurement workflow.\n\n" +
+      "THE 3-STEP SHOPPING & PROCUREMENT WORKFLOW:\n\n" +
+      "Step 1: DISCOVER & SUGGEST (Do NOT call propose_product yet!)\n" +
+      "When the user asks to find, browse, or purchase products (e.g., 'I want monitors', 'find me wired earphones', 'I need a mechanical keyboard'):\n" +
+      "- Suggest 2 to 3 distinct, high-quality candidate options in concise markdown bullets (Include Product Name, Unit Price in USD, Key Specs/Rating, and Merchant e.g. Amazon, B&H Photo, Dell, Best Buy).\n" +
+      "- Ask the user which option they prefer or if they'd like adjustments.\n" +
+      "- DO NOT call the `propose_product` tool during this suggestion step. Simply provide the helpful suggestions in text!\n\n" +
+      "Step 2: SELECTION & QUANTITY CONFIRMATION\n" +
+      "When the user selects an option or agrees on a specific product (e.g., 'I like option 1', 'let's go with the Dell 27-inch', 'sounds good'):\n" +
+      "- If the user did NOT mention how many they want, confirm the product and ask: 'Great choice! How many units would you like to order?'\n" +
+      "- If the user already specified quantity (e.g., 'I want 2 monitors', 'get 1 figma license for $15'), proceed directly to Step 3.\n\n" +
+      "Step 3: GENERATE PAYMENT CARD (Call propose_product!)\n" +
+      "Once both the product choice and quantity are clear:\n" +
+      "- Calculate: Total Price = Unit Price × Quantity.\n" +
+      "- Explain the policy verdict:\n" +
+      `  * If Total Price <= $${autoApproveLimit}: AUTO-APPROVED for immediate PayPal checkout under the corporate threshold.\n` +
+      `  * If Total Price > $${autoApproveLimit}: ESCALATED to manager approvals queue.\n` +
+      "- INVOKE the `propose_product` tool with `name`, `quantity`, `unit_price`, `price` (total price), `merchant`, `category`, and `reasoning`.\n" +
+      "- Provide a brief closing summary confirming the order details.\n\n" +
+      "CONVERSATIONAL STYLE: Professional, concise, responsive, and attentive. Never rush to show the payment card until the user has chosen their product and quantity.",
     messages: await convertToModelMessages(messages),
-    maxTokens: 500,
+    maxTokens: 750,
+    maxSteps: 3,
     tools: {
       propose_product: tool({
-        description: "Propose a product for the user to review. Call this when you want to show a specific product to the user, for example, the Auralis NC-7 headphones.",
-        parameters: z.object({}),
-        execute: async () => ({}),
+        description:
+          "Generate the final purchase order proposal card for PayPal checkout AFTER the user has chosen a product and confirmed the quantity. Do NOT call this on initial search queries.",
+        parameters: z.object({
+          name: z.string().describe("Product name e.g. 'Dell UltraSharp 27-inch 4K Monitor'"),
+          quantity: z.number().optional().default(1).describe("Number of units selected"),
+          unit_price: z.number().optional().describe("Price per unit in USD"),
+          price: z.number().describe("Total price in USD (unit_price * quantity)"),
+          merchant: z.string().describe("Merchant name e.g. 'Dell', 'Amazon', 'B&H Photo', 'Best Buy'"),
+          category: z.string().optional().default("Electronics"),
+          rating: z.number().optional().default(4.7),
+          image: z.string().optional().describe("Product image URL"),
+          reasoning: z.string().optional().describe("Summary of quantity, total price, and policy check"),
+        }),
+        execute: async (args) => args,
       }),
       delegate_task: tool({
         description: "Swarm Tool: Delegate a complex task to a specialized agent (e.g., 'Researcher', 'Negotiator').",

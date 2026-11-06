@@ -1,5 +1,79 @@
 [
   {
+    "id": "tx_41cd0ffa",
+    "amount_cents": 59493,
+    "merchant": "Amazon",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Approved order appr_1793981135557",
+    "verdict": "APPROVE",
+    "rule_id": "MND-HITL-001",
+    "reason": "Authorized by manager via Approvals Center.",
+    "audit_hash": "2615aac4f3e64d47a1dba49be8fd9d0e",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T16:05:52.139401+00:00",
+    "status": "COMPLETED",
+    "approval_id": "appr_1793981135557",
+    "paypal_order": {
+      "id": "74812962XW4164608",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 59493,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "74812962XW4164608",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "approved_appr_1793981135557",
+            "amount": {
+              "currency_code": "USD",
+              "value": "594.93"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/74812962XW4164608",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=74812962XW4164608",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "prop_28b1e68c",
+    "amount_cents": 59493,
+    "merchant": "Amazon",
+    "category": "IT Hardware & Peripherals",
+    "currency": "USD",
+    "description": "Keychron V1 Custom Mechanical Keyboard (Qty: 7)",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-06-DAILY-CAP",
+    "reason": "Blocked: 594.93 would bring daily spend to 744.93, over the 500.00 daily cap.",
+    "audit_hash": "779396fd0b77fb2de6f54be525badf156b2bc53a49cd1189b2719e1b05f9a9d5",
+    "trust_score_after": 75.0,
+    "timestamp": "2026-11-06T16:05:35.571279+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
     "id": "prop_099c81a3",
     "amount_cents": 5000,
     "merchant": "OfficeDepot",
@@ -128,5 +202,536 @@
     "timestamp": "2026-10-16T08:57:54.691951+00:00",
     "paypal_order": null,
     "status": "BLOCKED"
+  },
+  {
+    "id": "prop_c0f6934e",
+    "amount_cents": 2500,
+    "merchant": "Figma",
+    "category": "Software",
+    "currency": "USD",
+    "description": "Figma Pro license",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 25.00 from Figma passes all checks.",
+    "audit_hash": "b8f2179d5f3f78e90591b0bd30b88cab3436a4d52abeafb3ade936f860223efd",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T07:00:01.425893+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-DD8BCA46",
+      "status": "CREATED",
+      "amount_cents": 2500,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-DD8BCA46",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_2985d07a",
+    "amount_cents": 2500,
+    "merchant": "Figma",
+    "category": "Software",
+    "currency": "USD",
+    "description": "Figma Pro license",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 25.00 from Figma passes all checks.",
+    "audit_hash": "b31a90eba50e2053f10d881aae10915363201dc0fd002a56012bda48d587b643",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T07:04:02.606678+00:00",
+    "paypal_order": {
+      "id": "2ED64197RH631883E",
+      "status": "CREATED",
+      "amount_cents": 2500,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "2ED64197RH631883E",
+        "intent": "CAPTURE",
+        "status": "CREATED",
+        "purchase_units": [
+          {
+            "reference_id": "prop_2985d07a",
+            "amount": {
+              "currency_code": "USD",
+              "value": "25.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ"
+            }
+          }
+        ],
+        "create_time": "2026-11-06T07:04:04Z",
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2ED64197RH631883E",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=2ED64197RH631883E",
+            "rel": "approve",
+            "method": "GET"
+          },
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2ED64197RH631883E",
+            "rel": "update",
+            "method": "PATCH"
+          },
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2ED64197RH631883E/capture",
+            "rel": "capture",
+            "method": "POST"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_140bdf3a",
+    "amount_cents": 13900,
+    "merchant": "B&H Photo",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Auralis NC-7",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 139.00 from B&H Photo passes all checks.",
+    "audit_hash": "e59d123a731b7b656dfb46e4e7385e8178d73011f8680e591e3eb8cec4473466",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T08:07:04.095215+00:00",
+    "paypal_order": {
+      "id": "4NK68256BS583015U",
+      "status": "CREATED",
+      "amount_cents": 13900,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "4NK68256BS583015U",
+        "intent": "CAPTURE",
+        "status": "CREATED",
+        "purchase_units": [
+          {
+            "reference_id": "prop_140bdf3a",
+            "amount": {
+              "currency_code": "USD",
+              "value": "139.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ"
+            }
+          }
+        ],
+        "create_time": "2026-11-06T08:07:07Z",
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/4NK68256BS583015U",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=4NK68256BS583015U",
+            "rel": "approve",
+            "method": "GET"
+          },
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/4NK68256BS583015U",
+            "rel": "update",
+            "method": "PATCH"
+          },
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/4NK68256BS583015U/capture",
+            "rel": "capture",
+            "method": "POST"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_ee9d9b3b",
+    "amount_cents": 13900,
+    "merchant": "B&H Photo",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Auralis NC-7",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-11-EVASION-STRUCTURING",
+    "reason": "Blocked: Detected structuring evasion attack. Proposal of 139.00 is suspiciously close to the auto-approve limit of 150.00 while having multiple recent transactions.",
+    "audit_hash": "4c007acab118bc7a9c6d38f94d83d8abf949389b93eed5827b121eb8ad3aee63",
+    "trust_score_after": 75.0,
+    "timestamp": "2026-11-06T08:08:37.265120+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_ac0d6054",
+    "amount_cents": 13900,
+    "merchant": "B&H Photo",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Auralis NC-7",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-11-EVASION-STRUCTURING",
+    "reason": "Blocked: Detected structuring evasion attack. Proposal of 139.00 is suspiciously close to the auto-approve limit of 150.00 while having multiple recent transactions.",
+    "audit_hash": "16647a45fceac5d00555695632e4eb23aae50aedcf23763fd0d901d9d2e313d6",
+    "trust_score_after": 50.0,
+    "timestamp": "2026-11-06T08:08:45.766789+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_e65ee254",
+    "amount_cents": 13900,
+    "merchant": "B&H Photo",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Auralis NC-7",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 139.00 from B&H Photo passes all checks.",
+    "audit_hash": "a7b328c7087e9240fa38d530fd786dff8f76b9a439c62aa3c9115cdba80f0be7",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T08:15:02.700807+00:00",
+    "paypal_order": {
+      "id": "7X955448JM445720J",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 13900,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "7X955448JM445720J",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "prop_e65ee254",
+            "amount": {
+              "currency_code": "USD",
+              "value": "139.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/7X955448JM445720J",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=7X955448JM445720J",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_7319a9cf",
+    "amount_cents": 13900,
+    "merchant": "B&H Photo",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Auralis NC-7",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-11-EVASION-STRUCTURING",
+    "reason": "Blocked: Detected structuring evasion attack. Proposal of 139.00 is suspiciously close to the auto-approve limit of 150.00 while having multiple recent transactions.",
+    "audit_hash": "a0d6d9c44660abcbf20f218d4384a3d9bbf7c83befe517ce48e4196631b6ebc8",
+    "trust_score_after": 75.0,
+    "timestamp": "2026-11-06T08:23:09.871706+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_329adf78",
+    "amount_cents": 35996,
+    "merchant": "Amazon",
+    "category": "Monitors",
+    "currency": "USD",
+    "description": "Acer SB220Q bi 21.5-inch Full HD IPS Ultra-Thin Monitor (Qty: 4)",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-06-DAILY-CAP",
+    "reason": "Blocked: 359.96 would bring daily spend to 648.96, over the 500.00 daily cap.",
+    "audit_hash": "fc1f2f568fec9ad6afa65a4460a67b3a9d8997b2ef7b3df24004b56c1caf7c55",
+    "trust_score_after": 50.0,
+    "timestamp": "2026-11-06T09:08:22.543541+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_4adc700d",
+    "amount_cents": 35996,
+    "merchant": "Amazon",
+    "category": "Monitors",
+    "currency": "USD",
+    "description": "Acer SB220Q bi 21.5-inch Full HD IPS Ultra-Thin Monitor (Qty: 4)",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-06-DAILY-CAP",
+    "reason": "Blocked: 359.96 would bring daily spend to 648.96, over the 500.00 daily cap.",
+    "audit_hash": "fd66e00011c2b360eb6219aad93b43d78cb9f2a3ed19ff42145417a3f7f8d9f8",
+    "trust_score_after": 25.0,
+    "timestamp": "2026-11-06T09:11:13.989943+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_b08a1fd3",
+    "amount_cents": 29997,
+    "merchant": "Amazon",
+    "category": "Monitors",
+    "currency": "USD",
+    "description": "HP VH240a 23.8-inch Full HD Monitor (Qty: 3)",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 299.97 from Amazon passes all checks.",
+    "audit_hash": "f5b8ff5f908b38d8b43525588e45c625f323da314a37fa504777b65328e22981",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T09:24:49.545483+00:00",
+    "paypal_order": {
+      "id": "3KV75785SP035524L",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 29997,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "3KV75785SP035524L",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "prop_b08a1fd3",
+            "amount": {
+              "currency_code": "USD",
+              "value": "299.97"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/3KV75785SP035524L",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=3KV75785SP035524L",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_d20bc2e5",
+    "amount_cents": 29997,
+    "merchant": "Amazon",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "HP Monitor",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 299.97 from Amazon passes all checks.",
+    "audit_hash": "242e9624b8d23ab7f8a5d107e80f76f029cde0f55062d3cf360bfb64e5e0148f",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-06T14:57:18.315995+00:00",
+    "paypal_order": {
+      "id": "6HD491597C7089306",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 29997,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "6HD491597C7089306",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "prop_d20bc2e5",
+            "amount": {
+              "currency_code": "USD",
+              "value": "299.97"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6HD491597C7089306",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=6HD491597C7089306",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_fa3597e2",
+    "amount_cents": 35000,
+    "merchant": "Dell",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Dell Monitor",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 350.00 exceeds the auto-approval limit of 300.00.",
+    "audit_hash": "cb732edde97d1e77e0ae482e71294abd5e4edc72a37723ae0b73e7ff52b8ef17",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-06T14:57:22.174319+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_94e9d651"
+  },
+  {
+    "id": "prop_e5e6ca07",
+    "amount_cents": 29997,
+    "merchant": "Amazon",
+    "category": "Monitors",
+    "currency": "USD",
+    "description": "HP VH240a 23.8-inch Full HD Monitor (Qty: 3)",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 299.97 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "0574bd1b9f56a16adb0958f61b79178d071c2da1362ba20b32e3fed2928973dd",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-06T15:14:37.564923+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_87570e8e"
+  },
+  {
+    "id": "prop_e0bfc10a",
+    "amount_cents": 22500,
+    "merchant": "Amazon",
+    "category": "Electronics / Computer Accessories",
+    "currency": "USD",
+    "description": "Sceptre 24-inch FHD Monitor (E248W-19203R) (Qty: 3)",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 225.00 from Amazon passes all checks.",
+    "audit_hash": "247376706fbd6e4cde38018b015a3e4b35b5980161748a26a361fab6f08b41eb",
+    "trust_score_after": 92.0,
+    "timestamp": "2026-11-06T15:25:32.074853+00:00",
+    "paypal_order": {
+      "id": "5WD17859DA6448348",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 22500,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "5WD17859DA6448348",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "prop_e0bfc10a",
+            "amount": {
+              "currency_code": "USD",
+              "value": "225.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/5WD17859DA6448348",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=5WD17859DA6448348",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_73e4b36a",
+    "amount_cents": 22500,
+    "merchant": "Amazon",
+    "category": "Electronics / Computer Accessories",
+    "currency": "USD",
+    "description": "Sceptre 24-inch FHD Monitor (E248W-19203R) (Qty: 3)",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-06-DAILY-CAP",
+    "reason": "Blocked: 225.00 would bring daily spend to 600.00, over the 500.00 daily cap.",
+    "audit_hash": "c40bf8a0a4f1ca0ee484b92091d976d9b1b000a33710750b218cf05a21fee9e9",
+    "trust_score_after": 67.0,
+    "timestamp": "2026-11-06T15:26:31.179423+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_b18d2602",
+    "amount_cents": 59493,
+    "merchant": "Amazon",
+    "category": "IT Hardware & Peripherals",
+    "currency": "USD",
+    "description": "Keychron V1 Custom Mechanical Keyboard (Qty: 7)",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 594.93 exceeds the auto-approval limit of 300.00.",
+    "audit_hash": "67b59db3e0c7288ead05e08eac661e22e8971147721c9fb5691d6fb9d3080e85",
+    "trust_score_after": 57.0,
+    "timestamp": "2026-11-06T15:27:45.875639+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_4dc43993"
   }
 ]

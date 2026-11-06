@@ -14,6 +14,8 @@ async def create_order(amount_cents: int, currency: str, reference_id: str, idem
         idempotency_key = f"create_{reference_id}_{uuid.uuid4().hex[:8]}"
 
     amount_str = f"{amount_cents / 100:.2f}"
+    return_url = "http://localhost:8080/dashboard"
+    cancel_url = "http://localhost:8080/dashboard"
     
     payload = {
         "intent": "CAPTURE",
@@ -25,7 +27,18 @@ async def create_order(amount_cents: int, currency: str, reference_id: str, idem
                     "value": amount_str
                 }
             }
-        ]
+        ],
+        "payment_source": {
+            "paypal": {
+                "experience_context": {
+                    "brand_name": "MANDATE",
+                    "landing_page": "LOGIN",
+                    "user_action": "PAY_NOW",
+                    "return_url": return_url,
+                    "cancel_url": cancel_url
+                }
+            }
+        }
     }
     
     try:

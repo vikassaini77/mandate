@@ -17,8 +17,10 @@ export interface MandateApi {
   killMandate(id: string): Promise<any>;
   activateMandate(id: string): Promise<any>;
   getApprovalQueue(): Promise<any>;
-  approveTransaction(id: string): Promise<any>;
+  approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string; category?: string }): Promise<any>;
   denyTransaction(id: string): Promise<any>;
+  getTransactions(): Promise<any>;
+  completeTransaction(id: string, payload?: { paypal_order_id?: string; amount_cents?: number; merchant?: string; description?: string }): Promise<any>;
   getActivity(): Promise<typeof activity>;
   getAuditEvents(): Promise<AuditRecord[]>;
   getProducts(): Promise<Product[]>;
@@ -39,6 +41,8 @@ const mockApi: MandateApi = {
   async getApprovalQueue() { await pause(); return { data: [{id: 'appr_123', amount_cents: 250000, merchant: 'Apple', status: 'PENDING'}] }; },
   async approveTransaction(id: string) { await pause(); return { status: 'success' }; },
   async denyTransaction(id: string) { await pause(); return { status: 'success' }; },
+  async getTransactions() { await pause(); return { data: [] }; },
+  async completeTransaction(id: string) { await pause(); return { status: 'success' }; },
   async getActivity() {
     await pause();
     return activity;
@@ -67,7 +71,8 @@ const mockApi: MandateApi = {
 
 const mocksEnabled = import.meta.env["VITE_USE_MOCKS"] !== "false";
 
-const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+export const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+export const API_V1_URL = `${BACKEND_URL}/api/v1`;
 
 const realApi: MandateApi = {
   async runRedTeamScenario(id: string) { await pause(); return { status: 'success', result: { bypassed_firewall: false, firewall_reason: 'Mock blocked' } }; },
@@ -112,11 +117,15 @@ const realApi: MandateApi = {
     await pause();
     return { data: [{id: 'appr_123', amount_cents: 250000, merchant: 'Apple', status: 'PENDING'}] };
   },
-  async approveTransaction(id: string) {
+  async approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string }) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/approvals/${id}/approve`, {
         method: 'POST',
-        headers: { 'X-API-Key': 'dev-agent-key-123' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-agent-key-123',
+        },
+        body: JSON.stringify(payload || {}),
       });
       if (res.ok) return await res.json();
     } catch {}
@@ -132,6 +141,29 @@ const realApi: MandateApi = {
       if (res.ok) return await res.json();
     } catch {}
     await pause();
+    return { status: 'success' };
+  },
+  async getTransactions() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/transactions/`, {
+        headers: { 'X-API-Key': 'dev-agent-key-123' }
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return { data: [] };
+  },
+  async completeTransaction(id: string, payload?: { paypal_order_id?: string; amount_cents?: number; merchant?: string; description?: string }) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/transactions/${id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-agent-key-123',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      if (res.ok) return await res.json();
+    } catch {}
     return { status: 'success' };
   },
   async getActivity() {
