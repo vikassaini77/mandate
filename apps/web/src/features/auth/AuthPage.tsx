@@ -118,7 +118,6 @@ export function AuthPage() {
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
         data: { display_name: values.displayName?.trim() || undefined },
       },
     });
@@ -126,13 +125,28 @@ export function AuthPage() {
       setError(signUpError.message);
       return;
     }
-    if (data.session && data.user) {
+
+    const isExistingUser = data.user && (!data.user.identities || data.user.identities.length === 0);
+    if (isExistingUser) {
+      setError("An account with this email already exists. Please sign in instead.");
+      return;
+    }
+
+    if (data.user) {
       await supabase
         .from("profiles")
         .upsert({ id: data.user.id, display_name: values.displayName?.trim() || null });
-      setTargetUserId(data.user.id);
-      setVaultActive(true);
-    } else setMessage("Check your email to confirm your account, then return to sign in.");
+    }
+
+    // Ensure session is cleared so user isn't logged in immediately
+    await supabase.auth.signOut();
+
+    // Move to login page
+    setMode("signin");
+    setVerified(false);
+    reset({ displayName: "", email: values.email, password: "" });
+    setMessage("Account created successfully! Please sign in with your credentials.");
+    void navigate({ to: "/auth", search: { mode: "signin" }, replace: true });
   };
   const google = async () => {
     setError(null);
