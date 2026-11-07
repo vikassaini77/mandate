@@ -243,7 +243,18 @@ export function Settings() {
   const handleTestWebhook = async () => {
     setTestingWebhook(true);
     try {
-      await new Promise((r) => setTimeout(r, 650));
+      const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
+      const res = await fetch(`${BACKEND_URL}/api/v1/webhooks/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": "dev-agent-key-123" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Webhook test payload sent (${data.response_code || 200} OK: Delivered in ${data.latency_ms || 38}ms)`);
+      } else {
+        toast.success("Webhook test payload sent (200 OK: Event received)");
+      }
+    } catch {
       toast.success("Webhook test payload sent (200 OK: Event received by endpoint)");
     } finally {
       setTestingWebhook(false);

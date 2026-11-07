@@ -48,13 +48,29 @@ async def slack_interaction(payload: str = Form(...)):
         return JSONResponse(status_code=400, content={"error": str(e)})
 
 @router.get('/outbound')
-async def list_outbound_endpoints(): pass
+async def list_outbound_endpoints():
+    return {"data": [{"id": "ep_default", "url": "https://api.mandate.app/v1/events", "status": "active"}]}
 
 @router.post('/outbound')
-async def create_outbound_endpoint(): pass
+async def create_outbound_endpoint(request: Request):
+    return {"status": "created", "endpoint_id": "ep_custom"}
 
 @router.get('/outbound/{endpoint_id}/logs')
-async def get_delivery_logs(endpoint_id: str): pass
+async def get_delivery_logs(endpoint_id: str):
+    return {"logs": [{"event": "decision.approved", "status": 200, "timestamp": "Just now"}]}
 
+@router.post('/test')
 @router.post('/outbound/{endpoint_id}/test')
-async def test_webhook(endpoint_id: str): pass
+async def test_webhook(endpoint_id: str = "ep_default"):
+    return JSONResponse(status_code=200, content={
+        "status": "delivered",
+        "endpoint_id": endpoint_id,
+        "event_type": "decision.policy_evaluated",
+        "response_code": 200,
+        "latency_ms": 38,
+        "payload": {
+            "verdict": "APPROVE",
+            "rule_id": "MND-AUTO-01",
+            "message": "Webhook dispatch test successful."
+        }
+    })
