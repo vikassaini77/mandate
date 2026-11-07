@@ -76,11 +76,12 @@
     "amount": 250.0,
     "merchant": "Apple",
     "category": "Electronics",
-    "status": "pending",
+    "status": "blocked",
     "time": "Just now",
     "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
     "confidence": 75,
-    "timestamp": "2026-11-06T18:56:53.054740+00:00"
+    "timestamp": "2026-11-06T18:56:53.054740+00:00",
+    "resolved_at": "2026-11-07T03:41:54.661055+00:00"
   },
   "appr_c7f8adbd": {
     "id": "appr_c7f8adbd",
@@ -90,11 +91,12 @@
     "amount": 250.0,
     "merchant": "Apple",
     "category": "Electronics",
-    "status": "pending",
+    "status": "blocked",
     "time": "Just now",
     "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
     "confidence": 75,
-    "timestamp": "2026-11-07T03:21:54.159984+00:00"
+    "timestamp": "2026-11-07T03:21:54.159984+00:00",
+    "resolved_at": "2026-11-07T03:41:56.043775+00:00"
   },
   "appr_39804b5d": {
     "id": "appr_39804b5d",
@@ -104,10 +106,57 @@
     "amount": 250.0,
     "merchant": "Apple",
     "category": "Electronics",
+    "status": "approved",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-07T03:23:45.538660+00:00",
+    "resolved_at": "2026-11-07T03:42:07.129916+00:00",
+    "paypal_order_id": "MOCK-ORDER-07EF338E",
+    "paypal_order": {
+      "id": "MOCK-ORDER-07EF338E",
+      "status": "CREATED",
+      "amount_cents": 25000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-07EF338E",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    }
+  },
+  "appr_6c2e3bdc": {
+    "id": "appr_6c2e3bdc",
+    "proposal_id": "prop_e737372f",
+    "item": "Keychron Q1 Pro Mechanical Keyboard",
+    "amount_cents": 21900,
+    "amount": 219.0,
+    "merchant": "Keychron",
+    "category": "Electronics",
+    "status": "pending",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 219.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-07T03:40:59.021167+00:00"
+  },
+  "appr_c0cff80c": {
+    "id": "appr_c0cff80c",
+    "proposal_id": "prop_0b29ba0c",
+    "item": "AirPods Pro",
+    "amount_cents": 25000,
+    "amount": 250.0,
+    "merchant": "Apple",
+    "category": "Electronics",
     "status": "pending",
     "time": "Just now",
     "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
     "confidence": 75,
-    "timestamp": "2026-11-07T03:23:45.538660+00:00"
+    "timestamp": "2026-11-07T03:57:55.796318+00:00"
   }
 }

@@ -41,7 +41,7 @@ const ROW_HEIGHT = 57;
 const VIEWPORT_HEIGHT = 456;
 
 export function AuditLog() {
-  const storeTransactions = useMandateStore((state) => state.transactions);
+  const storeTransactions = useMandateStore((state) => state.transactions) || [];
   const [mode, setMode] = useState<"table" | "timeline">("table");
   const [query, setQuery] = useState("");
   const [verdict, setVerdict] = useState("all");

@@ -1,5 +1,87 @@
 [
   {
+    "id": "prop_d28d692a",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-05-MONTHLY-CAP",
+    "reason": "Blocked: 999999.99 would bring monthly spend to 1000199.99, over the 5000.00 monthly cap.",
+    "audit_hash": "b44f7bb4bb658f21c244d4a09565ddf7cd6b63fcbb36645c4e5e2eb5230922ce",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-11-07T03:57:55.801056+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_0b29ba0c",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "c6573e7214c481e43ba1d5813109851ff3220168ce2adc82e8eb3b59d94a09d7",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-07T03:57:55.796318+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_c0cff80c"
+  },
+  {
+    "id": "prop_39f23558",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "2302eb36b66a4f5f7f0715cd47e52336fea4bf160cd9ebe3a782aaabf5f1b959",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-07T03:57:55.788452+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-B76CFD7E",
+      "status": "CREATED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-B76CFD7E",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_e737372f",
+    "amount_cents": 21900,
+    "merchant": "Keychron",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "Keychron Q1 Pro Mechanical Keyboard",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 219.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "e7849fcba3ab0a9ecc1d84f3ceef072e84683027ecbf843abe215ac10d9cec9c",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-07T03:40:59.021167+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_6c2e3bdc"
+  },
+  {
     "id": "prop_5b2dd095",
     "amount_cents": 99999999,
     "merchant": "LuxuryYachts",
@@ -22,15 +104,17 @@
     "category": "Electronics",
     "currency": "USD",
     "description": "AirPods Pro",
-    "verdict": "ESCALATE",
+    "verdict": "APPROVE",
     "rule_id": "RULE-08-AUTO-APPROVE",
     "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
     "audit_hash": "5ae60b1ed0455ea50abd1a456e976c2f74872957f1f6a58860b1dbc539fd472d",
     "trust_score_after": 90.0,
     "timestamp": "2026-11-07T03:23:45.538660+00:00",
     "paypal_order": null,
-    "status": "PENDING_APPROVAL",
-    "approval_id": "appr_39804b5d"
+    "status": "COMPLETED",
+    "approval_id": "appr_39804b5d",
+    "paypal_order_id": "MOCK-ORDER-07EF338E",
+    "resolved_at": "2026-11-07T03:42:07.129916+00:00"
   },
   {
     "id": "prop_f73e7f38",
@@ -94,7 +178,7 @@
     "trust_score_after": 90.0,
     "timestamp": "2026-11-07T03:21:54.159984+00:00",
     "paypal_order": null,
-    "status": "PENDING_APPROVAL",
+    "status": "DENIED",
     "approval_id": "appr_c7f8adbd"
   },
   {

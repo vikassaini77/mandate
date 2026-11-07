@@ -567,8 +567,8 @@ export function MandateApp({
 }
 
 function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
-  const requests = useMandateStore((state) => state.requests);
-  const transactions = useMandateStore((state) => state.transactions);
+  const requests = useMandateStore((state) => state.requests) || [];
+  const transactions = useMandateStore((state) => state.transactions) || [];
   const monthlyCap = useMandateStore((state) => state.monthlyCap) || 5000;
   const [active, setActive] = useState(true);
   const [confirmKill, setConfirmKill] = useState(false);

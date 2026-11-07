@@ -21,6 +21,24 @@ export interface PurchaseRequest {
   resolved_at?: string;
 }
 
+export interface TransactionRecord {
+  id: string;
+  merchant: string;
+  item: string;
+  amount: number;
+  category?: string;
+  status: "completed" | "pending" | "refunded" | "denied";
+  verdict?: string;
+  ruleId?: string;
+  reason?: string;
+  paypalOrderId?: string;
+  paypalApproveLink?: string;
+  date?: string;
+  mandate?: string;
+  refunded?: number;
+  employee?: string;
+}
+
 const defaultRequests: PurchaseRequest[] = [
   {
     id: "req-1",
@@ -54,9 +72,47 @@ const defaultRequests: PurchaseRequest[] = [
   },
 ];
 
+const defaultTransactions: TransactionRecord[] = [
+  {
+    id: "4KJ92163MR782114A",
+    merchant: "Notion",
+    item: "Team workspace · monthly",
+    amount: 80,
+    status: "completed",
+    category: "Software",
+    verdict: "APPROVE",
+    ruleId: "MND-AUTO-01",
+    date: "Oct 3, 2026 · 10:31",
+  },
+  {
+    id: "9PL21094JS334211B",
+    merchant: "Figma",
+    item: "Professional annual · 2 seats",
+    amount: 288,
+    status: "completed",
+    category: "Software",
+    verdict: "APPROVE",
+    ruleId: "MND-AUTO-01",
+    date: "Oct 2, 2026 · 14:05",
+  },
+  {
+    id: "1AB88231KL902341C",
+    merchant: "Apple Store",
+    item: "MacBook Pro 16 M3 Max",
+    amount: 3499,
+    status: "denied",
+    category: "Hardware",
+    verdict: "BLOCK",
+    ruleId: "MND-MAX-CAP",
+    reason: "Exceeds daily auto-spend cap ($1,000).",
+    date: "Sep 28, 2026 · 11:22",
+  },
+];
+
 interface MandateState {
   mandates: Mandate[];
   requests: PurchaseRequest[];
+  transactions: TransactionRecord[];
   autoApproveLimit: number;
   dailySpendCap: number;
   monthlyCap: number;
@@ -64,6 +120,8 @@ interface MandateState {
   setActiveView: (view: string) => void;
   setLimits: (limits: { autoApproveLimit?: number; dailySpendCap?: number; monthlyCap?: number }) => void;
   addRequest: (request: { id?: string; merchant: string; item: string; amount: number; reason?: string }) => void;
+  addTransaction: (tx: Partial<TransactionRecord> & { id: string; merchant: string; item: string; amount: number }) => void;
+  completeTransaction: (id: string, paypalOrderId?: string) => void;
   localAI: boolean;
   setLocalAI: (enabled: boolean) => void;
   addMandate: (text: string, limit: number) => void;
@@ -102,7 +160,7 @@ export const useMandateStore = create<MandateState>()(
               status: "pending",
               confidence: 92,
             },
-            ...state.requests,
+            ...(state.requests || []),
           ],
         })),
       localAI: false,
@@ -142,6 +200,7 @@ export const useMandateStore = create<MandateState>()(
         },
       ],
       requests: defaultRequests,
+      transactions: defaultTransactions,
       setRequests: (requests) => set({ requests }),
       fetchRequests: async () => {
         try {
@@ -163,6 +222,34 @@ export const useMandateStore = create<MandateState>()(
         } catch {}
         set({ requests: defaultRequests });
       },
+      addTransaction: (tx) =>
+        set((state) => ({
+          transactions: [
+            {
+              id: tx.id,
+              merchant: tx.merchant,
+              item: tx.item,
+              amount: tx.amount,
+              category: tx.category || "General",
+              status: tx.status || "completed",
+              verdict: tx.verdict || "APPROVE",
+              ruleId: tx.ruleId || "MND-HITL-001",
+              reason: tx.reason || "Authorized by manager via Approvals Center.",
+              paypalOrderId: tx.paypalOrderId,
+              paypalApproveLink: tx.paypalApproveLink,
+              date: tx.date || "Just now",
+            },
+            ...(state.transactions || []).filter((t) => t.id !== tx.id),
+          ],
+        })),
+      completeTransaction: (id, paypalOrderId) =>
+        set((state) => ({
+          transactions: (state.transactions || []).map((tx) =>
+            tx.id === id || tx.paypalOrderId === id || (paypalOrderId && tx.id === paypalOrderId)
+              ? { ...tx, status: "completed", ...(paypalOrderId ? { paypalOrderId } : {}) }
+              : tx,
+          ),
+        })),
       addMandate: (text, limit) =>
         set((state) => ({
           mandates: [
@@ -179,18 +266,18 @@ export const useMandateStore = create<MandateState>()(
               },
               status: "active",
             },
-            ...state.mandates,
+            ...(state.mandates || []),
           ],
         })),
       resolveRequest: (id, status) =>
         set((state) => ({
-          requests: state.requests.map((request) =>
+          requests: (state.requests || []).map((request) =>
             request.id === id ? { ...request, status } : request,
           ),
         })),
       toggleMandate: (id) =>
         set((state) => ({
-          mandates: state.mandates.map((mandate) =>
+          mandates: (state.mandates || []).map((mandate) =>
             mandate.id === id
               ? { ...mandate, status: mandate.status === "active" ? "paused" : "active" }
               : mandate,
@@ -206,9 +293,20 @@ export const useMandateStore = create<MandateState>()(
         localAI: state.localAI,
         mandates: state.mandates,
         requests: state.requests,
+        transactions: state.transactions,
         autoApproveLimit: state.autoApproveLimit,
         dailySpendCap: state.dailySpendCap,
         monthlyCap: state.monthlyCap,
+      }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...((persistedState as any) || {}),
+        transactions: ((persistedState as any)?.transactions && Array.isArray((persistedState as any).transactions))
+          ? (persistedState as any).transactions
+          : currentState.transactions || defaultTransactions,
+        requests: ((persistedState as any)?.requests && Array.isArray((persistedState as any).requests))
+          ? (persistedState as any).requests
+          : currentState.requests || defaultRequests,
       }),
     },
   ),
