@@ -499,8 +499,7 @@ export function Transactions() {
           <DialogHeader>
             <DialogTitle>Issue sandbox refund</DialogTitle>
             <DialogDescription>
-              Refund the full payment or enter a partial amount. This demo updates the local
-              transaction ledger.
+              Refund the full payment or enter a partial amount against this transaction on the ledger.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-3">

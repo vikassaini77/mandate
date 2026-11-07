@@ -72,7 +72,7 @@ export const PLANS: Record<string, PlanTier> = {
       "10 AI conversations / month",
       "7-day cryptographic audit log",
       "Standard heuristic firewall",
-      "Local PayPal Mock Gateway",
+      "PayPal Sandbox Gateway",
     ],
     limits: {
       decisions: "42 / 100",

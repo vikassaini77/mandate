@@ -2144,7 +2144,7 @@ function Approvals() {
           className="self-start sm:self-auto font-mono text-xs gap-1.5"
           onClick={async () => {
             await resetRequests();
-            toast.success("Approval queue reset to default pending items.");
+            toast.success("Approval queue reset.");
           }}
         >
           <RefreshCw className="size-3.5" />
@@ -2300,11 +2300,11 @@ function Approvals() {
             className="mt-4 font-mono text-xs gap-1.5"
             onClick={async () => {
               await resetRequests();
-              toast.success("Approval queue reset to default pending items.");
+              toast.success("Approval queue refreshed.");
             }}
           >
             <RefreshCw className="size-3.5" />
-            Reset Queue to Demo State
+            Reset Approval Queue
           </Button>
         </div>
       )}
