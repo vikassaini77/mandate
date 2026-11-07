@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional
-from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException
 from packages.database.hash_chain import global_audit_chain
 from packages.database.mandate import MandateState, RuleConfig
+from pydantic import BaseModel
 
 from apps.api.src.services.auth import Principal, Role, get_current_principal, require_roles
 

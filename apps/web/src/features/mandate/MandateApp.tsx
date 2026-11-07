@@ -1987,13 +1987,8 @@ function MandateBuilder() {
 function Approvals() {
   const requests = useMandateStore((state) => state.requests);
   const resolve = useMandateStore((state) => state.resolveRequest);
-<<<<<<< HEAD
-  const completeTransaction = useMandateStore((state) => state.completeTransaction);
-  const addTransaction = useMandateStore((state) => state.addTransaction);
-=======
   const fetchRequests = useMandateStore((state) => state.fetchRequests);
   const resetRequests = useMandateStore((state) => state.resetRequests);
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
   const [selected, setSelected] = useState<string | null>(null);
   const [verifyingRequest, setVerifyingRequest] = useState<{ id: string, action: "approve" | "sign" } | null>(null);
   const [checkoutSession, setCheckoutSession] = useState<{
@@ -2011,20 +2006,13 @@ function Approvals() {
   const [signatures, setSignatures] = useState<Record<string, number>>({});
   const active = requests.find((request) => request.id === selected);
   const pending = requests.filter((request) => request.status === "pending");
-<<<<<<< HEAD
-  const decide = async (id: string, status: Exclude<RequestStatus, "pending">) => {
-    resolve(id, status);
-=======
 
   useEffect(() => {
     void fetchRequests();
   }, [fetchRequests]);
 
-  const decide = (id: string, status: Exclude<RequestStatus, "pending">) => {
+  const decide = async (id: string, status: Exclude<RequestStatus, "pending">) => {
     resolve(id, status);
-    if (status === 'approved') mandateApi.approveTransaction(id).catch(console.error);
-    if (status === 'blocked' || status === 'denied') mandateApi.denyTransaction(id).catch(console.error);
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
     setSelected(null);
     if (status === "approved") {
       setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
@@ -2038,28 +2026,12 @@ function Approvals() {
           merchant: targetReq?.merchant || "Vendor",
           category: "Electronics",
         });
-        const orderId = res?.intent?.id || res?.intent?.provider_raw?.id;
+        const orderId = res?.intent?.id || res?.intent?.provider_raw?.id || res?.data?.paypal_order_id;
         const approveLink =
           res?.intent?.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
           (orderId ? `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}` : null);
 
         if (orderId && approveLink) {
-          // Immediately record in store as completed
-          completeTransaction(id, orderId);
-          addTransaction({
-            id: orderId,
-            merchant: targetReq?.merchant || "Vendor",
-            item: targetReq?.item || "Approved purchase",
-            amount: targetReq?.amount || 299.97,
-            category: "Electronics",
-            status: "completed",
-            verdict: "APPROVE",
-            ruleId: "MND-HITL-001",
-            reason: "Authorized by manager via Approvals Center.",
-            paypalOrderId: orderId,
-            paypalApproveLink: approveLink,
-          });
-
           // Persistent active checkout banner so popup blocker can never block checkout
           setCheckoutSession({
             id,
@@ -2072,12 +2044,12 @@ function Approvals() {
           });
 
           // Sync completion to backend
-          mandateApi.completeTransaction(id, {
+          mandateApi.completeTransaction?.(id, {
             paypal_order_id: orderId,
             amount_cents: targetReq ? Math.round(targetReq.amount * 100) : 29997,
             merchant: targetReq?.merchant || "Vendor",
             description: targetReq?.item || "Approved order",
-          }).catch(() => {});
+          })?.catch?.(() => {});
 
           toast.success("Payment approved & PayPal Order Created!", {
             description: `Order ${orderId}. Opening PayPal Sandbox Checkout...`,
@@ -2107,12 +2079,25 @@ function Approvals() {
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
-<<<<<<< HEAD
-      <PageTitle
-        eyebrow="Human checkpoint"
-        title="Approvals Center"
-        description="Resolve edge cases before their authorization window closes."
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageTitle
+          eyebrow="Human checkpoint"
+          title="Approvals Center"
+          description="Resolve edge cases before their authorization window closes."
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start sm:self-auto font-mono text-xs gap-1.5"
+          onClick={async () => {
+            await resetRequests();
+            toast.success("Approval queue reset to default pending items.");
+          }}
+        >
+          <RefreshCw className="size-3.5" />
+          Reset Queue
+        </Button>
+      </div>
       <PayPalTestAccountHelper className="max-w-2xl" />
 
       {checkoutSession && (
@@ -2158,27 +2143,6 @@ function Approvals() {
           </div>
         </motion.div>
       )}
-=======
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <PageTitle
-          eyebrow="Human checkpoint"
-          title="Approvals Center"
-          description="Resolve edge cases before their authorization window closes."
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="self-start sm:self-auto font-mono text-xs gap-1.5"
-          onClick={async () => {
-            await resetRequests();
-            toast.success("Approval queue reset to default pending items.");
-          }}
-        >
-          <RefreshCw className="size-3.5" />
-          Reset Queue
-        </Button>
-      </div>
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
       <div className="grid gap-4 xl:grid-cols-2">
         {pending.map((request, index) => (
           <motion.div

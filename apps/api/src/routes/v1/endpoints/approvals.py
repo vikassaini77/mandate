@@ -2,27 +2,23 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Dict, Optional
-import uuid
-from datetime import datetime, timezone
-from pydantic import BaseModel
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from packages.database.hash_chain import global_audit_chain
+from pydantic import BaseModel
 
 from apps.api.src.services.auth import Principal, Role, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
 
 router = APIRouter()
 
-<<<<<<< HEAD
+
 class ApproveRequest(BaseModel):
     amount_cents: Optional[int] = None
     merchant: Optional[str] = None
     category: Optional[str] = "General"
 
-# Mock queue for Demo
-_APPROVAL_QUEUE: Dict[str, dict] = {
-    "appr_123": {"id": "appr_123", "amount_cents": 250000, "merchant": "Apple", "status": "PENDING"}
-=======
+
 _STORE_PATH = os.path.join(os.path.dirname(__file__), "approvals_store.json")
 
 _INITIAL_SEED: Dict[str, dict] = {
@@ -59,7 +55,6 @@ _INITIAL_SEED: Dict[str, dict] = {
         "status": "pending",
         "confidence": 60,
     },
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
 }
 
 _APPROVAL_QUEUE: Dict[str, dict] = {}
@@ -118,22 +113,15 @@ async def get_approval_queue(
 
 @router.post("/{approval_id}/approve")
 async def approve(
-<<<<<<< HEAD
-    approval_id: str, 
-    payload: Optional[ApproveRequest] = None,
-    idempotency_key: Optional[str] = Header(None, alias='Idempotency-Key'),
-    principal: Principal = Depends(require_roles([Role.ADMIN, Role.MANAGER]))
-=======
     approval_id: str,
+    payload: Optional[ApproveRequest] = None,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_roles([Role.ADMIN, Role.MANAGER, Role.SYSTEM_AGENT])),
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
 ):
     """
     Manager approves an escalated transaction.
     Triggers payment gateway, records to audit hash chain, and updates persistent store.
     """
-<<<<<<< HEAD
     req = _APPROVAL_QUEUE.get(approval_id)
     if not req:
         # Dynamically register pending approval if submitted from frontend demo or chat
@@ -143,19 +131,12 @@ async def approve(
             "id": approval_id,
             "amount_cents": amount,
             "merchant": merchant,
-            "status": "PENDING"
+            "status": "pending",
         }
         _APPROVAL_QUEUE[approval_id] = req
 
-    if req["status"] != "PENDING":
-=======
-    if approval_id not in _APPROVAL_QUEUE:
-        raise HTTPException(status_code=404, detail="Approval request not found")
-
-    req = _APPROVAL_QUEUE[approval_id]
     current_status = str(req.get("status", "")).lower()
     if current_status not in ["pending", "escalate"]:
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
         raise HTTPException(status_code=400, detail="Request already processed")
 
     amount_cents = req.get("amount_cents")
@@ -164,64 +145,31 @@ async def approve(
 
     gateway = PaymentGatewayFactory.get_gateway()
     try:
-<<<<<<< HEAD
         # Fulfill the order via PayPal Orders v2 Sandbox
-=======
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
         intent = await gateway.create_intent(
             amount_cents=amount_cents,
             currency="USD",
             reference_id=f"approved_{approval_id}",
             idempotency_key=idempotency_key or f"idem_appr_{approval_id}",
         )
-<<<<<<< HEAD
-        req["status"] = "APPROVED"
-        req["paypal_order"] = intent.model_dump()
 
-        # Synchronize into backend persistent transactions store
-        try:
-            from apps.api.src.routes.v1.endpoints import transactions as tx_mod
-            found = False
-            for t in tx_mod._TRANSACTIONS:
-                if t.get("approval_id") == approval_id or t.get("id") == approval_id:
-                    t["status"] = "COMPLETED"
-                    t["paypal_order"] = intent.model_dump()
-                    found = True
-                    break
-            if not found:
-                tx_mod._TRANSACTIONS.insert(0, {
-                    "id": f"tx_{uuid.uuid4().hex[:8]}",
-                    "amount_cents": req["amount_cents"],
-                    "merchant": req["merchant"],
-                    "category": payload.category if payload and payload.category else "General",
-                    "currency": "USD",
-                    "description": f"Approved order {approval_id}",
-                    "verdict": "APPROVE",
-                    "rule_id": "MND-HITL-001",
-                    "reason": "Authorized by manager via Approvals Center.",
-                    "audit_hash": uuid.uuid4().hex,
-                    "trust_score_after": 100.0,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "status": "COMPLETED",
-                    "approval_id": approval_id,
-                    "paypal_order": intent.model_dump()
-                })
-            tx_mod._save_transactions()
-        except Exception as sync_err:
-            print("Sync to transactions failed:", sync_err)
-
-        return {"status": "success", "message": "Transaction approved and payment initiated.", "intent": intent.model_dump()}  # noqa: E501
-=======
+        resolved_at = datetime.now(timezone.utc).isoformat()
+        paypal_order_data = intent.model_dump() if hasattr(intent, "model_dump") else intent
+        paypal_id = getattr(intent, "id", None) or (
+            paypal_order_data.get("id") if isinstance(paypal_order_data, dict) else f"PAYPAL-SBX-{approval_id}"
+        )
 
         req["status"] = "approved"
-        req["resolved_at"] = datetime.now(timezone.utc).isoformat()
-        req["paypal_order_id"] = getattr(intent, "id", None) or f"PAYPAL-SBX-{approval_id}"
+        req["resolved_at"] = resolved_at
+        req["paypal_order_id"] = paypal_id
+        req["paypal_order"] = paypal_order_data
         _save_approvals()
 
         # Synchronize approved order into completed transactions ledger
         try:
             from apps.api.src.routes.v1.endpoints.transactions import record_completed_approval
-            record_completed_approval(req, req["paypal_order_id"])
+
+            record_completed_approval(req, paypal_id)
         except Exception as e:
             print(f"Warning: Failed to sync completed transaction: {e}")
 
@@ -232,10 +180,10 @@ async def approve(
                     "event": "APPROVAL_AUTHORIZED",
                     "approval_id": approval_id,
                     "merchant": req.get("merchant"),
-                    "amount": req.get("amount"),
+                    "amount": req.get("amount") or (amount_cents / 100.0),
                     "status": "APPROVED",
-                    "paypal_order_id": req["paypal_order_id"],
-                    "timestamp": req["resolved_at"],
+                    "paypal_order_id": paypal_id,
+                    "timestamp": resolved_at,
                 }
             )
         except Exception:
@@ -245,9 +193,8 @@ async def approve(
             "status": "success",
             "message": "Transaction approved and payment initiated.",
             "data": req,
-            "intent": intent.model_dump() if hasattr(intent, "model_dump") else intent,
+            "intent": paypal_order_data,
         }
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -259,14 +206,17 @@ async def deny(
 ):
     """Firmly denies an escalated purchase request and saves status to disk."""
     if approval_id not in _APPROVAL_QUEUE:
-<<<<<<< HEAD
-        _APPROVAL_QUEUE[approval_id] = {"id": approval_id, "status": "DENIED"}
-        return {"status": "success", "message": "Transaction firmly denied."}
-        
-    _APPROVAL_QUEUE[approval_id]["status"] = "DENIED"
+        _APPROVAL_QUEUE[approval_id] = {"id": approval_id, "status": "blocked"}
+
+    req = _APPROVAL_QUEUE[approval_id]
+    resolved_at = datetime.now(timezone.utc).isoformat()
+    req["status"] = "blocked"
+    req["resolved_at"] = resolved_at
+    _save_approvals()
 
     try:
         from apps.api.src.routes.v1.endpoints import transactions as tx_mod
+
         for t in tx_mod._TRANSACTIONS:
             if t.get("approval_id") == approval_id or t.get("id") == approval_id:
                 t["status"] = "DENIED"
@@ -274,15 +224,6 @@ async def deny(
                 break
     except Exception:
         pass
-
-    return {"status": "success", "message": "Transaction firmly denied."}
-=======
-        raise HTTPException(status_code=404, detail="Approval request not found")
-
-    req = _APPROVAL_QUEUE[approval_id]
-    req["status"] = "blocked"
-    req["resolved_at"] = datetime.now(timezone.utc).isoformat()
-    _save_approvals()
 
     try:
         global_audit_chain.add_record(
@@ -292,7 +233,7 @@ async def deny(
                 "merchant": req.get("merchant"),
                 "amount": req.get("amount"),
                 "status": "BLOCKED",
-                "timestamp": req["resolved_at"],
+                "timestamp": resolved_at,
             }
         )
     except Exception:
@@ -309,5 +250,8 @@ async def reset_approval_queue(
     global _APPROVAL_QUEUE
     _APPROVAL_QUEUE = json.loads(json.dumps(_INITIAL_SEED))
     _save_approvals()
-    return {"status": "success", "message": "Approval queue reset to initial state.", "data": list(_APPROVAL_QUEUE.values())}
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
+    return {
+        "status": "success",
+        "message": "Approval queue reset to initial state.",
+        "data": list(_APPROVAL_QUEUE.values()),
+    }

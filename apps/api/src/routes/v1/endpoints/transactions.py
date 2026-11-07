@@ -11,7 +11,7 @@ from packages.database.spend_state import SpendState
 from packages.database.verdict import Verdict
 from pydantic import BaseModel, Field
 
-from apps.api.src.routes.v1.endpoints.approvals import _APPROVAL_QUEUE, add_to_approval_queue
+from apps.api.src.routes.v1.endpoints.approvals import add_to_approval_queue
 from apps.api.src.routes.v1.endpoints.mandates import _MOCK_MANDATES
 from apps.api.src.services.auth import Principal, Role, get_current_principal, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory

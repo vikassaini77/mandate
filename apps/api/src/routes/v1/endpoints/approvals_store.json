@@ -81,5 +81,33 @@
     "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
     "confidence": 75,
     "timestamp": "2026-11-06T18:56:53.054740+00:00"
+  },
+  "appr_c7f8adbd": {
+    "id": "appr_c7f8adbd",
+    "proposal_id": "prop_4dd09853",
+    "item": "AirPods Pro",
+    "amount_cents": 25000,
+    "amount": 250.0,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "status": "pending",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-07T03:21:54.159984+00:00"
+  },
+  "appr_39804b5d": {
+    "id": "appr_39804b5d",
+    "proposal_id": "prop_dbfdf5ec",
+    "item": "AirPods Pro",
+    "amount_cents": 25000,
+    "amount": 250.0,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "status": "pending",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-07T03:23:45.538660+00:00"
   }
 }

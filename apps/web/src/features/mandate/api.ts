@@ -38,13 +38,6 @@ const mockApi: MandateApi = {
   async getMandate(id: string) { await pause(); return { is_active: true, kill_switch_engaged: false, trust_score: 100, rules: {} }; },
   async killMandate(id: string) { await pause(); return { status: 'success' }; },
   async activateMandate(id: string) { await pause(); return { status: 'success' }; },
-<<<<<<< HEAD
-  async getApprovalQueue() { await pause(); return { data: [{id: 'appr_123', amount_cents: 250000, merchant: 'Apple', status: 'PENDING'}] }; },
-  async approveTransaction(id: string) { await pause(); return { status: 'success' }; },
-  async denyTransaction(id: string) { await pause(); return { status: 'success' }; },
-  async getTransactions() { await pause(); return { data: [] }; },
-  async completeTransaction(id: string) { await pause(); return { status: 'success' }; },
-=======
   async getApprovalQueue() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/approvals/queue`, {
@@ -54,11 +47,15 @@ const mockApi: MandateApi = {
     } catch {}
     return { data: [] };
   },
-  async approveTransaction(id: string) {
+  async approveTransaction(id: string, payload?: any) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/approvals/${id}/approve`, {
         method: 'POST',
-        headers: { 'X-API-Key': 'dev-agent-key-123' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-agent-key-123',
+        },
+        body: JSON.stringify(payload || {}),
       });
       if (res.ok) return await res.json();
     } catch {}
@@ -74,7 +71,18 @@ const mockApi: MandateApi = {
     } catch {}
     return { status: 'success' };
   },
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
+  async getTransactions() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/transactions/`, {
+        headers: { 'X-API-Key': 'dev-agent-key-123' }
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return { data: [] };
+  },
+  async completeTransaction(id: string) {
+    return { status: 'success' };
+  },
   async getActivity() {
     await pause();
     return activity;

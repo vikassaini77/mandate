@@ -17,6 +17,8 @@ export interface PurchaseRequest {
   reason: string;
   status: RequestStatus;
   confidence: number;
+  paypal_order_id?: string;
+  resolved_at?: string;
 }
 
 const defaultRequests: PurchaseRequest[] = [
@@ -78,104 +80,31 @@ interface MandateState {
   setIntensity: (intensity: number[]) => void;
 }
 
-<<<<<<< HEAD
-export const useMandateStore = create<MandateState>((set) => ({
-  autoApproveLimit: 300,
-  dailySpendCap: 1000,
-  monthlyCap: 5000,
-  activeView: "dashboard",
-  setActiveView: (activeView) => set({ activeView }),
-  setLimits: (limits) => set((state) => ({ ...state, ...limits })),
-  addRequest: (request) =>
-    set((state) => ({
-      requests: [
-        {
-          id: request.id || `appr_${Date.now()}`,
-          merchant: request.merchant,
-          item: request.item,
-          amount: request.amount,
-          time: "Just now",
-          reason: request.reason || "Escalated to human-in-the-loop approval queue.",
-          status: "pending",
-          confidence: 92,
-        },
-        ...state.requests,
-      ],
-    })),
-  localAI: false,
-  setLocalAI: (enabled) => set({ localAI: enabled }),
-  theme: "Dark",
-  setTheme: (theme) => set({ theme }),
-  accent: "#FF0000",
-  setAccent: (accent) => set({ accent }),
-  intensity: [35],
-  setIntensity: (intensity) => set({ intensity }),
-  mandates: [
-    {
-      id: "m-1",
-      version: 4,
-      rawText: "Buy developer tools up to $500/month. Never buy annual plans.",
-      rules: {
-        monthlyCap: 500,
-        autoApproveLimit: 100,
-        categories: ["Software", "Developer tools"],
-        blockedMerchants: [],
-        maxPerDay: 3,
-      },
-      status: "active",
-    },
-    {
-      id: "m-2",
-      version: 2,
-      rawText: "Restock office essentials under $150 per order from trusted vendors.",
-      rules: {
-        monthlyCap: 600,
-        autoApproveLimit: 150,
-        categories: ["Office", "Electronics"],
-        blockedMerchants: ["Unknown vendor"],
-        maxPerDay: 5,
-      },
-      status: "active",
-    },
-  ],
-  requests: [
-    {
-      id: "req-1",
-      merchant: "Linear",
-      item: "Business workspace · 12 seats",
-      amount: 192,
-      time: "2 min ago",
-      reason: "Annual billing conflicts with mandate m-1",
-      status: "pending",
-      confidence: 94,
-    },
-    {
-      id: "req-2",
-      merchant: "B&H Photo",
-      item: "Logitech Brio 4K webcam",
-      amount: 149,
-      time: "18 min ago",
-      reason: "Price is within threshold; new merchant requires review",
-      status: "pending",
-      confidence: 87,
-    },
-    {
-      id: "req-3",
-      merchant: "Dell Technologies",
-      item: "PowerEdge R750 Rack Server",
-      amount: 8500,
-      time: "32 min ago",
-      reason: "High-value purchase exceeds $5,000 threshold. Quorum required.",
-      status: "pending",
-      confidence: 60,
-    },
-  ],
-  addMandate: (text, limit) =>
-    set((state) => ({
-=======
 export const useMandateStore = create<MandateState>()(
   persist(
     (set) => ({
+      autoApproveLimit: 300,
+      dailySpendCap: 1000,
+      monthlyCap: 5000,
+      activeView: "dashboard",
+      setActiveView: (activeView) => set({ activeView }),
+      setLimits: (limits) => set((state) => ({ ...state, ...limits })),
+      addRequest: (request) =>
+        set((state) => ({
+          requests: [
+            {
+              id: request.id || `appr_${Date.now()}`,
+              merchant: request.merchant,
+              item: request.item,
+              amount: request.amount,
+              time: "Just now",
+              reason: request.reason || "Escalated to human-in-the-loop approval queue.",
+              status: "pending",
+              confidence: 92,
+            },
+            ...state.requests,
+          ],
+        })),
       localAI: false,
       setLocalAI: (enabled) => set({ localAI: enabled }),
       theme: "Dark",
@@ -184,7 +113,6 @@ export const useMandateStore = create<MandateState>()(
       setAccent: (accent) => set({ accent }),
       intensity: [35],
       setIntensity: (intensity) => set({ intensity }),
->>>>>>> 8771a4c (Fix: Fixes in Approval, Agent Chat and Transations)
       mandates: [
         {
           id: "m-1",
@@ -278,6 +206,9 @@ export const useMandateStore = create<MandateState>()(
         localAI: state.localAI,
         mandates: state.mandates,
         requests: state.requests,
+        autoApproveLimit: state.autoApproveLimit,
+        dailySpendCap: state.dailySpendCap,
+        monthlyCap: state.monthlyCap,
       }),
     },
   ),
