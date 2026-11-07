@@ -148,22 +148,25 @@ export const useMandateStore = create<MandateState>()(
       activeView: "dashboard",
       setActiveView: (activeView) => set({ activeView }),
       setLimits: (limits) => set((state) => ({ ...state, ...limits })),
-      addRequest: (request) =>
+      addRequest: (request) => {
+        const newReq: PurchaseRequest = {
+          id: request.id || `appr_${Date.now()}`,
+          merchant: request.merchant,
+          item: request.item,
+          amount: request.amount,
+          time: "Just now",
+          reason: request.reason || "Escalated to human-in-the-loop approval queue.",
+          status: "pending",
+          confidence: 92,
+        };
+        mandateApi.submitApprovalRequest?.(newReq).catch(() => {});
         set((state) => ({
           requests: [
-            {
-              id: request.id || `appr_${Date.now()}`,
-              merchant: request.merchant,
-              item: request.item,
-              amount: request.amount,
-              time: "Just now",
-              reason: request.reason || "Escalated to human-in-the-loop approval queue.",
-              status: "pending",
-              confidence: 92,
-            },
-            ...(state.requests || []),
+            newReq,
+            ...(state.requests || []).filter((r) => r.id !== newReq.id),
           ],
-        })),
+        }));
+      },
       localAI: false,
       setLocalAI: (enabled) => set({ localAI: enabled }),
       theme: "Dark",
@@ -207,7 +210,25 @@ export const useMandateStore = create<MandateState>()(
         try {
           const res = await mandateApi.getApprovalQueue();
           if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            set({ requests: res.data as PurchaseRequest[] });
+            const mapped: PurchaseRequest[] = res.data.map((r: any) => ({
+              id: r.id,
+              merchant: r.merchant || "Vendor",
+              item: r.item || r.description || "Purchase proposal",
+              amount: typeof r.amount === "number" ? r.amount : (r.amount_cents ? r.amount_cents / 100 : 0),
+              status: (r.status || "pending").toLowerCase() === "blocked" || (r.status || "pending").toLowerCase() === "denied"
+                ? "blocked"
+                : (r.status || "pending").toLowerCase() === "approved"
+                ? "approved"
+                : "pending",
+              reason: r.reason || "Escalated for manager review",
+              time: r.time || "Just now",
+              confidence: r.confidence || 85,
+            }));
+            set((state) => {
+              const backendMap = new Map(mapped.map((m) => [m.id, m]));
+              const localOnly = (state.requests || []).filter((r) => !backendMap.has(r.id));
+              return { requests: [...localOnly, ...mapped] };
+            });
           }
         } catch (e) {
           console.warn("Could not sync approval requests from backend:", e);

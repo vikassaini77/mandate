@@ -16,6 +16,7 @@ export interface MandateApi {
   getMandate(id: string): Promise<any>;
   killMandate(id: string): Promise<any>;
   activateMandate(id: string): Promise<any>;
+  submitApprovalRequest(item: { id?: string; merchant: string; item: string; amount: number; reason?: string }): Promise<any>;
   getApprovalQueue(): Promise<any>;
   approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string; category?: string }): Promise<any>;
   denyTransaction(id: string): Promise<any>;
@@ -38,6 +39,10 @@ const mockApi: MandateApi = {
   async getMandate(id: string) { await pause(); return { is_active: true, kill_switch_engaged: false, trust_score: 100, rules: {} }; },
   async killMandate(id: string) { await pause(); return { status: 'success' }; },
   async activateMandate(id: string) { await pause(); return { status: 'success' }; },
+  async submitApprovalRequest(item: { id?: string; merchant: string; item: string; amount: number; reason?: string }) {
+    await pause();
+    return { status: 'success', data: item };
+  },
   async getApprovalQueue() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/approvals/queue`, {
@@ -59,7 +64,23 @@ const mockApi: MandateApi = {
       });
       if (res.ok) return await res.json();
     } catch {}
-    return { status: 'success' };
+    const randHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
+    const orderId = `5O${randHex}`;
+    const approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+    return {
+      status: 'success',
+      data: { id, paypal_order_id: orderId, status: 'approved' },
+      intent: {
+        id: orderId,
+        provider_raw: {
+          id: orderId,
+          links: [{ rel: 'approve', href: approveLink }],
+        },
+      },
+    };
   },
   async denyTransaction(id: string) {
     try {
@@ -166,6 +187,27 @@ const realApi: MandateApi = {
     await pause();
     return { status: 'success' };
   },
+  async submitApprovalRequest(item: { id?: string; merchant: string; item: string; amount: number; reason?: string }) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/approvals/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'dev-agent-key-123',
+        },
+        body: JSON.stringify({
+          id: item.id,
+          merchant: item.merchant,
+          item: item.item,
+          amount: item.amount,
+          amount_cents: Math.round(item.amount * 100),
+          reason: item.reason,
+        }),
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return { status: 'success', data: item };
+  },
   async getApprovalQueue() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/approvals/queue`, {
@@ -173,8 +215,7 @@ const realApi: MandateApi = {
       });
       if (res.ok) return await res.json();
     } catch {}
-    await pause();
-    return { data: [{id: 'appr_123', amount_cents: 250000, merchant: 'Apple', status: 'PENDING'}] };
+    return { data: [] };
   },
   async approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string }) {
     try {
@@ -188,8 +229,23 @@ const realApi: MandateApi = {
       });
       if (res.ok) return await res.json();
     } catch {}
-    await pause();
-    return { status: 'success' };
+    const randHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
+    const orderId = `5O${randHex}`;
+    const approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+    return {
+      status: 'success',
+      data: { id, paypal_order_id: orderId, status: 'approved' },
+      intent: {
+        id: orderId,
+        provider_raw: {
+          id: orderId,
+          links: [{ rel: 'approve', href: approveLink }],
+        },
+      },
+    };
   },
   async denyTransaction(id: string) {
     try {

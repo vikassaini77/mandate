@@ -101,6 +101,44 @@ def add_to_approval_queue(item: dict) -> str:
 _load_approvals()
 
 
+class SubmitApprovalRequest(BaseModel):
+    id: Optional[str] = None
+    merchant: str
+    item: str
+    amount: Optional[float] = None
+    amount_cents: Optional[int] = None
+    reason: Optional[str] = "Escalated for manager approval"
+    category: Optional[str] = "General"
+
+
+@router.post("")
+@router.post("/submit")
+async def submit_approval_request(
+    payload: SubmitApprovalRequest,
+    principal: Principal = Depends(require_roles([Role.ADMIN, Role.MANAGER, Role.SYSTEM_AGENT])),
+):
+    """Adds a new purchase request into the persistent human-in-the-loop approval queue."""
+    amount = payload.amount if payload.amount is not None else ((payload.amount_cents or 0) / 100.0)
+    amount_cents = payload.amount_cents if payload.amount_cents is not None else int(amount * 100)
+    req_id = payload.id or f"appr_{Date.now() if 'Date' in globals() else datetime.now(timezone.utc).strftime('%s')}"
+    item = {
+        "id": req_id,
+        "merchant": payload.merchant,
+        "item": payload.item,
+        "amount": amount,
+        "amount_cents": amount_cents,
+        "reason": payload.reason or "Escalated for manager approval",
+        "category": payload.category or "General",
+        "time": "Just now",
+        "status": "pending",
+        "confidence": 88,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    _APPROVAL_QUEUE[req_id] = item
+    _save_approvals()
+    return {"status": "success", "data": item}
+
+
 @router.get("/queue")
 async def get_approval_queue(
     skip: int = 0,
