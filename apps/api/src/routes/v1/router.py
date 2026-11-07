@@ -31,8 +31,10 @@ api_router.include_router(ml_router, prefix='/ml', tags=['ml'])
 api_router.include_router(health_router, tags=['system'])
 
 # Item 31-38: SaaS features
+from apps.api.src.routes.v1.endpoints.accounting import router as accounting_router
 from apps.api.src.routes.v1.endpoints.admin import router as admin_router
 from apps.api.src.routes.v1.endpoints.billing import router as billing_router
 
 api_router.include_router(billing_router, prefix='/billing', tags=['billing'])
 api_router.include_router(admin_router, prefix='/admin', tags=['admin'])
+api_router.include_router(accounting_router, prefix='/accounting', tags=['accounting'])
