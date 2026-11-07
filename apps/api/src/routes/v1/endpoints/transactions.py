@@ -54,18 +54,19 @@ class ProposeTransactionRequest(BaseModel):
 
 def record_completed_approval(req: dict, intent_id: Optional[str] = None):
     """
-    Synchronizes an approved transaction into the completed transactions store.
-    Sanitizes content to prevent leaking internal payment secrets or private identifiers.
+    Synchronizes an approved transaction into the transactions store as PENDING_PAYMENT.
+    Transaction only moves to COMPLETED once payment is captured.
     """
     prop_id = req.get("proposal_id") or req.get("id")
     match = next((t for t in _TRANSACTIONS if t.get("id") == prop_id or t.get("approval_id") == req.get("id")), None)
     
     now = datetime.now(timezone.utc).isoformat()
     if match:
-        match["status"] = "COMPLETED"
-        match["verdict"] = "APPROVE"
+        match["status"] = "PENDING_PAYMENT"
+        match["verdict"] = "AUTHORIZED"
         match["paypal_order_id"] = intent_id or req.get("paypal_order_id")
         match["resolved_at"] = req.get("resolved_at") or now
+        match["reason"] = "Authorized by Manager via Human Approval Center. Awaiting PayPal Sandbox payment capture."
     else:
         amount_cents = req.get("amount_cents")
         if amount_cents is None:
@@ -77,13 +78,13 @@ def record_completed_approval(req: dict, intent_id: Optional[str] = None):
             "category": req.get("category", "General"),
             "currency": "USD",
             "description": req.get("item") or req.get("description", "Approved Purchase"),
-            "verdict": "APPROVE",
+            "verdict": "AUTHORIZED",
             "rule_id": "MND-HUMAN-APPROVAL",
-            "reason": "Authorized by Manager via Human Approval Center",
+            "reason": "Authorized by Manager via Human Approval Center. Awaiting PayPal Sandbox payment capture.",
             "trust_score_after": 100.0,
             "timestamp": req.get("resolved_at") or now,
             "paypal_order_id": intent_id or req.get("paypal_order_id") or f"PAYPAL-SBX-{req.get('id')}",
-            "status": "COMPLETED",
+            "status": "PENDING_PAYMENT",
             "approval_id": req.get("id")
         })
     _save_transactions()
@@ -289,13 +290,31 @@ async def complete_transaction(
         _GLOBAL_SPEND_STATE.daily_purchase_count += 1
     else:
         target["status"] = "COMPLETED"
+        target["verdict"] = "APPROVE"
+        target["reason"] = "Payment successfully authorized and captured via PayPal Sandbox."
         if payload and payload.paypal_order_id:
             if not target.get("paypal_order"):
                 target["paypal_order"] = {}
             target["paypal_order"]["id"] = payload.paypal_order_id
+            target["paypal_order_id"] = payload.paypal_order_id
+        amt = target.get("amount_cents", 0)
+        _GLOBAL_SPEND_STATE.current_monthly_spend += amt
+        _GLOBAL_SPEND_STATE.current_daily_spend += amt
+        _GLOBAL_SPEND_STATE.daily_purchase_count += 1
             
+    # Mark payment completed in persistent approvals store if linked
+    try:
+        from apps.api.src.routes.v1.endpoints.approvals import _APPROVAL_QUEUE, _save_approvals
+        for app_id, app_req in _APPROVAL_QUEUE.items():
+            if app_id == tx_id or app_req.get("paypal_order_id") == tx_id or app_id == target.get("approval_id"):
+                app_req["payment_completed"] = True
+                _save_approvals()
+                break
+    except Exception:
+        pass
+
     _save_transactions()
-    return {"status": "success", "message": "Transaction marked as COMPLETED.", "transaction": target}
+    return {"status": "success", "message": "Transaction marked as COMPLETED and settled.", "transaction": target}
 
 @router.post('/{tx_id}/refund')
 async def refund_transaction(

@@ -6,13 +6,13 @@
     "category": "General",
     "currency": "USD",
     "description": "Business workspace \u00b7 12 seats",
-    "verdict": "APPROVE",
+    "verdict": "AUTHORIZED",
     "rule_id": "MND-HUMAN-APPROVAL",
-    "reason": "Authorized by Manager via Human Approval Center",
+    "reason": "Authorized by Manager via Human Approval Center. Awaiting PayPal Sandbox payment capture.",
     "trust_score_after": 100.0,
     "timestamp": "2026-11-07T05:47:40.411945+00:00",
     "paypal_order_id": "5DF81312TY005822L",
-    "status": "COMPLETED",
+    "status": "PENDING_PAYMENT",
     "approval_id": "req-1",
     "paypal_order": {
       "id": "5DF81312TY005822L"

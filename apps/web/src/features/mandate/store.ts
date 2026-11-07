@@ -19,6 +19,7 @@ export interface PurchaseRequest {
   confidence: number;
   paypal_order_id?: string;
   resolved_at?: string;
+  payment_completed?: boolean;
 }
 
 export interface TransactionRecord {
@@ -122,6 +123,7 @@ interface MandateState {
   addRequest: (request: { id?: string; merchant: string; item: string; amount: number; reason?: string }) => void;
   addTransaction: (tx: Partial<TransactionRecord> & { id: string; merchant: string; item: string; amount: number }) => void;
   completeTransaction: (id: string, paypalOrderId?: string) => void;
+  markRequestPaid: (id: string, paypalOrderId?: string) => void;
   localAI: boolean;
   setLocalAI: (enabled: boolean) => void;
   addMandate: (text: string, limit: number) => void;
@@ -223,6 +225,9 @@ export const useMandateStore = create<MandateState>()(
               reason: r.reason || "Escalated for manager review",
               time: r.time || "Just now",
               confidence: r.confidence || 85,
+              paypal_order_id: r.paypal_order_id,
+              resolved_at: r.resolved_at,
+              payment_completed: r.payment_completed === true,
             }));
             set((state) => {
               const backendMap = new Map(mapped.map((m) => [m.id, m]));
@@ -238,21 +243,27 @@ export const useMandateStore = create<MandateState>()(
         try {
           const res = await mandateApi.getTransactions();
           if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const mapped: TransactionRecord[] = res.data.map((tx: any) => ({
-              id: tx.paypal_order_id || tx.id,
-              merchant: tx.merchant || "Authorized Merchant",
-              item: tx.description || `${tx.category || "Item"} Purchase`,
-              amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
-              status: tx.status?.toLowerCase() === "denied" || tx.status?.toLowerCase() === "blocked" ? "denied" : "completed",
-              category: tx.category || "General",
-              verdict: tx.verdict || "APPROVE",
-              ruleId: tx.rule_id || "MND-AUTO",
-              reason: tx.reason,
-              date: tx.timestamp
-                ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                : "Just now",
-              paypalOrderId: tx.paypal_order_id,
-            }));
+            const mapped: TransactionRecord[] = res.data.map((tx: any) => {
+              const st = (tx.status || "").toLowerCase();
+              const isCompleted = st === "completed";
+              const isDenied = st === "denied" || st === "blocked" || (tx.verdict || "").toLowerCase() === "block";
+              const status: "completed" | "pending" | "refunded" | "denied" = isCompleted ? "completed" : isDenied ? "denied" : "pending";
+              return {
+                id: tx.paypal_order_id || tx.id,
+                merchant: tx.merchant || "Authorized Merchant",
+                item: tx.description || `${tx.category || "Item"} Purchase`,
+                amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
+                status,
+                category: tx.category || "General",
+                verdict: isCompleted ? (tx.verdict || "APPROVE") : isDenied ? "BLOCK" : "PENDING_PAYMENT",
+                ruleId: tx.rule_id || "MND-AUTO",
+                reason: tx.reason,
+                date: tx.timestamp
+                  ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                  : "Just now",
+                paypalOrderId: tx.paypal_order_id,
+              };
+            });
             set((state) => {
               const backendMap = new Map(mapped.map((m) => [m.id, m]));
               const keptLocal = (state.transactions || []).filter((t) => !backendMap.has(t.id));
@@ -282,10 +293,10 @@ export const useMandateStore = create<MandateState>()(
               item: tx.item,
               amount: tx.amount,
               category: tx.category || "General",
-              status: tx.status || "completed",
-              verdict: tx.verdict || "APPROVE",
+              status: tx.status || "pending",
+              verdict: tx.verdict || (tx.status === "completed" ? "APPROVE" : "PENDING_PAYMENT"),
               ruleId: tx.ruleId || "MND-HITL-001",
-              reason: tx.reason || "Authorized by manager via Approvals Center.",
+              reason: tx.reason || (tx.status === "completed" ? "Payment successfully captured via PayPal Sandbox." : "Authorized by manager. Awaiting PayPal Sandbox payment capture."),
               paypalOrderId: tx.paypalOrderId,
               paypalApproveLink: tx.paypalApproveLink,
               date: tx.date || "Just now",
@@ -296,8 +307,26 @@ export const useMandateStore = create<MandateState>()(
       completeTransaction: (id, paypalOrderId) =>
         set((state) => ({
           transactions: (state.transactions || []).map((tx) =>
-            tx.id === id || tx.paypalOrderId === id || (paypalOrderId && tx.id === paypalOrderId)
-              ? { ...tx, status: "completed", ...(paypalOrderId ? { paypalOrderId } : {}) }
+            tx.id === id || tx.paypalOrderId === id || (paypalOrderId && (tx.id === paypalOrderId || tx.paypalOrderId === paypalOrderId))
+              ? { ...tx, status: "completed", verdict: "APPROVE · PAID", ...(paypalOrderId ? { paypalOrderId } : {}) }
+              : tx,
+          ),
+          requests: (state.requests || []).map((req) =>
+            req.id === id || req.paypal_order_id === id || (paypalOrderId && req.paypal_order_id === paypalOrderId)
+              ? { ...req, payment_completed: true }
+              : req,
+          ),
+        })),
+      markRequestPaid: (id, paypalOrderId) =>
+        set((state) => ({
+          requests: (state.requests || []).map((req) =>
+            req.id === id || req.paypal_order_id === id || (paypalOrderId && req.paypal_order_id === paypalOrderId)
+              ? { ...req, payment_completed: true }
+              : req,
+          ),
+          transactions: (state.transactions || []).map((tx) =>
+            tx.id === id || tx.paypalOrderId === id || (paypalOrderId && (tx.id === paypalOrderId || tx.paypalOrderId === paypalOrderId))
+              ? { ...tx, status: "completed", verdict: "APPROVE · PAID", ...(paypalOrderId ? { paypalOrderId } : {}) }
               : tx,
           ),
         })),
@@ -349,16 +378,37 @@ export const useMandateStore = create<MandateState>()(
         dailySpendCap: state.dailySpendCap,
         monthlyCap: state.monthlyCap,
       }),
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...((persistedState as any) || {}),
-        transactions: ((persistedState as any)?.transactions && Array.isArray((persistedState as any).transactions))
-          ? (persistedState as any).transactions
-          : currentState.transactions || defaultTransactions,
-        requests: ((persistedState as any)?.requests && Array.isArray((persistedState as any).requests))
-          ? (persistedState as any).requests
-          : currentState.requests || defaultRequests,
-      }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState as any) || {};
+        const sanitizedRequests = Array.isArray(persisted.requests)
+          ? persisted.requests.map((r: any) => {
+              if (r.id === "req-1" && r.payment_completed === undefined) {
+                return { ...r, payment_completed: false };
+              }
+              return r;
+            })
+          : currentState.requests || defaultRequests;
+
+        const sanitizedTransactions = Array.isArray(persisted.transactions)
+          ? persisted.transactions.map((t: any) => {
+              // If an order for Linear was approved but not paid, make sure it is pending
+              if (t.merchant === "Linear" && t.amount === 192 && (!t.ruleId || t.ruleId === "MND-HITL-001" || t.ruleId === "MND-HUMAN-APPROVAL")) {
+                const req1 = sanitizedRequests.find((r: any) => r.id === "req-1");
+                if (!req1?.payment_completed) {
+                  return { ...t, status: "pending", verdict: "PENDING_PAYMENT" };
+                }
+              }
+              return t;
+            })
+          : currentState.transactions || defaultTransactions;
+
+        return {
+          ...currentState,
+          ...persisted,
+          requests: sanitizedRequests,
+          transactions: sanitizedTransactions,
+        };
+      },
     },
   ),
 );

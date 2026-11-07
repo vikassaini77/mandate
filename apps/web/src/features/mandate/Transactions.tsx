@@ -6,10 +6,12 @@ import {
   ArrowDownLeft,
   CheckCircle2,
   CircleDollarSign,
+  Clock,
   ExternalLink,
   Receipt,
   RotateCcw,
   Search,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -139,22 +141,30 @@ export function Transactions() {
         if (res.ok) {
           const json = await res.json();
           if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
-            const mapped: Payment[] = json.data
-              .filter((tx: any) => tx.status === "COMPLETED")
-              .map((tx: any) => ({
+            const mapped: Payment[] = json.data.map((tx: any) => {
+              const st = (tx.status || "").toLowerCase();
+              const isPaid = st === "completed";
+              const isDenied = st === "denied" || st === "blocked" || (tx.verdict || "").toLowerCase() === "block";
+              const status: PaymentStatus = isPaid ? "completed" : isDenied ? "denied" : "pending";
+              return {
                 id: tx.paypal_order_id || `PAYPAL-SBX-${tx.id}`,
                 merchant: tx.merchant || "Authorized Merchant",
                 item: tx.description || `${tx.category || "Item"} Purchase`,
                 amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
-                status: "completed" as PaymentStatus,
+                status,
                 date: tx.timestamp
                   ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
                   : "Just now",
                 mandate: tx.rule_id || "Human-in-the-Loop Approval",
-                verdict: `${tx.verdict || "APPROVE"} · ${tx.rule_id || "MND-AUTO"}`,
+                verdict: isPaid
+                  ? `${tx.verdict || "APPROVE"} · ${tx.rule_id || "MND-AUTO"}`
+                  : isDenied
+                  ? `BLOCK · ${tx.rule_id || "DENIED"}`
+                  : "PENDING · AWAITING PAYMENT",
                 refunded: 0,
                 employee: "Security Operator",
-              }));
+              };
+            });
             setBackendPayments(mapped);
           }
         }
@@ -168,20 +178,23 @@ export function Transactions() {
   const approvedFromStore = useMemo(() => {
     return requests
       .filter((req) => req.status === "approved")
-      .map((req) => ({
-        id: req.paypal_order_id || `PAYPAL-SBX-${req.id.toUpperCase()}`,
-        merchant: req.merchant,
-        item: req.item,
-        amount: req.amount,
-        status: "completed" as PaymentStatus,
-        date: req.resolved_at
-          ? new Date(req.resolved_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-          : (req.time || "Just now"),
-        mandate: "Human-in-the-Loop Approval",
-        verdict: "APPROVE · HUMAN_OVERRIDE",
-        refunded: 0,
-        employee: "Security Operator",
-      }));
+      .map((req) => {
+        const isPaid = req.payment_completed === true;
+        return {
+          id: req.paypal_order_id || `PAYPAL-SBX-${req.id.toUpperCase()}`,
+          merchant: req.merchant,
+          item: req.item,
+          amount: req.amount,
+          status: (isPaid ? "completed" : "pending") as PaymentStatus,
+          date: req.resolved_at
+            ? new Date(req.resolved_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+            : (req.time || "Just now"),
+          mandate: "Human-in-the-Loop Approval",
+          verdict: isPaid ? "APPROVE · PAID" : "PENDING · AWAITING PAYMENT",
+          refunded: 0,
+          employee: "Security Operator",
+        };
+      });
   }, [requests]);
 
   const mappedStoreTx = useMemo(() => {
@@ -190,10 +203,14 @@ export function Transactions() {
       merchant: tx.merchant,
       item: tx.item,
       amount: tx.amount,
-      status: (tx.status === "denied" ? "failed" : tx.status) as PaymentStatus,
+      status: (tx.status === "denied" ? "denied" : tx.status) as PaymentStatus,
       date: tx.date || "Just now",
       mandate: tx.mandate || (tx.ruleId ? `Rule ${tx.ruleId}` : "Autonomous Mandate"),
-      verdict: `${tx.verdict || (tx.status === "denied" ? "BLOCK" : "APPROVE")} · ${tx.ruleId || "MND-AUTO"}`,
+      verdict: tx.status === "completed"
+        ? `${tx.verdict || "APPROVE"} · ${tx.ruleId || "MND-AUTO"}`
+        : tx.status === "denied"
+        ? `BLOCK · ${tx.ruleId || "DENIED"}`
+        : "PENDING · AWAITING PAYMENT",
       refunded: tx.refunded || 0,
       employee: tx.employee || "Security Agent",
     }));
@@ -453,35 +470,93 @@ export function Transactions() {
                   <PaymentChip value={selected.status} />
                 </Detail>
                 <Detail label="Policy verdict">
-                  <span className="font-mono text-xs text-safe">{selected.verdict}</span>
+                  <span className={cn("font-mono text-xs", selected.status === "completed" ? "text-safe" : selected.status === "pending" ? "text-warning" : "text-destructive")}>
+                    {selected.verdict}
+                  </span>
                 </Detail>
                 <Detail label="Mandate">
                   <span className="text-xs">{selected.mandate}</span>
                 </Detail>
                 <Detail label="Capture method">
-                  <span className="text-xs">PayPal Sandbox · immediate capture</span>
+                  <span className="text-xs">
+                    {selected.status === "completed" ? "PayPal Sandbox · Immediate capture & settled" : selected.status === "pending" ? "PayPal Sandbox · Payment capture pending" : "PayPal Sandbox · Rejected / Blocked"}
+                  </span>
                 </Detail>
                 <Detail label="Refunded">
                   <span className="font-mono text-xs">${selected.refunded.toFixed(2)}</span>
                 </Detail>
-                <div className="border-l-2 border-safe pl-4">
+                <div className="border-l-2 border-border pl-4">
                   <p className="font-mono text-[9px] uppercase text-muted-foreground">Lifecycle</p>
                   <div className="mt-3 space-y-3 text-xs">
-                    <p>
-                      <CheckCircle2 className="mr-2 inline size-4 text-safe" />
-                      Policy approved · 132ms
+                    <p className="flex items-center gap-2 text-safe">
+                      <CheckCircle2 className="size-4 shrink-0 text-safe" />
+                      <span>Policy authorized · 132ms</span>
                     </p>
-                    <p>
-                      <CheckCircle2 className="mr-2 inline size-4 text-safe" />
-                      PayPal order created
+                    <p className="flex items-center gap-2 text-safe">
+                      <CheckCircle2 className="size-4 shrink-0 text-safe" />
+                      <span>PayPal order generated</span>
                     </p>
-                    <p>
-                      <CheckCircle2 className="mr-2 inline size-4 text-safe" />
-                      Payment captured
-                    </p>
+                    {selected.status === "completed" ? (
+                      <p className="flex items-center gap-2 text-safe">
+                        <CheckCircle2 className="size-4 shrink-0 text-safe" />
+                        <span>Payment captured & settled</span>
+                      </p>
+                    ) : selected.status === "pending" ? (
+                      <p className="flex items-center gap-2 text-warning animate-pulse">
+                        <Clock className="size-4 shrink-0 text-warning" />
+                        <span>Awaiting PayPal Sandbox payment checkout</span>
+                      </p>
+                    ) : (
+                      <p className="flex items-center gap-2 text-destructive">
+                        <XCircle className="size-4 shrink-0 text-destructive" />
+                        <span>Payment not executed / blocked</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
+              {selected.status === "pending" && (
+                <div className="mt-6 rounded-md border border-warning/30 bg-warning/10 p-3.5 space-y-2.5">
+                  <div className="flex items-center gap-2 font-semibold text-xs text-warning">
+                    <Clock className="size-4" />
+                    <span>Payment Not Captured · Awaiting Checkout</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    This order was authorized by policy, but PayPal payment has not yet been completed. It is not counted towards settled spend.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="paypal"
+                      className="text-xs h-8 gap-1.5"
+                      onClick={() => window.open(`https://www.sandbox.paypal.com/checkoutnow?token=${selected.id}`, "_blank")}
+                    >
+                      <ExternalLink className="size-3.5" />
+                      Pay in PayPal Sandbox
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8 border-safe text-safe hover:bg-safe/10 gap-1.5"
+                      onClick={() => {
+                        useMandateStore.getState().completeTransaction(selected.id);
+                        useMandateStore.getState().markRequestPaid(selected.id);
+                        mandateApi.completeTransaction(selected.id, {
+                          paypal_order_id: selected.id,
+                          amount_cents: Math.round(selected.amount * 100),
+                          merchant: selected.merchant,
+                          description: selected.item,
+                        }).catch(() => {});
+                        toast.success("Payment marked as captured and settled!");
+                        setSelected((prev) => prev ? { ...prev, status: "completed", verdict: "APPROVE · PAID" } : null);
+                      }}
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Confirm Payment Captured
+                    </Button>
+                  </div>
+                </div>
+              )}
               {selected.status === "completed" && selected.refunded < selected.amount && (
                 <Button
                   variant="outline"
@@ -529,12 +604,30 @@ export function Transactions() {
   );
 }
 function PaymentChip({ value }: { value: PaymentStatus }) {
-  if (value === "completed") return <VerdictBadge value="approved" className="normal-case" />;
-  if (value === "pending") return <VerdictBadge value="escalate" className="normal-case" />;
-  if (value === "denied") return <VerdictBadge value="blocked" className="normal-case" />;
+  if (value === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-sm bg-safe/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-safe border border-safe/30">
+        <CheckCircle2 className="size-3" /> PAID
+      </span>
+    );
+  }
+  if (value === "pending") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-sm bg-warning/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-warning border border-warning/30">
+        <Clock className="size-3" /> UNPAID · PENDING
+      </span>
+    );
+  }
+  if (value === "denied") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-sm bg-destructive/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-destructive border border-destructive/30">
+        <XCircle className="size-3" /> FAILED
+      </span>
+    );
+  }
   return (
-    <span className="inline-flex items-center rounded-sm bg-signal/10 px-2 py-1 font-mono text-[11px] uppercase text-signal">
-      <RotateCcw className="mr-1.5 size-3" aria-hidden="true" /> {value}
+    <span className="inline-flex items-center gap-1.5 rounded-sm bg-signal/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-signal border border-signal/30">
+      <RotateCcw className="size-3" /> REFUNDED
     </span>
   );
 }

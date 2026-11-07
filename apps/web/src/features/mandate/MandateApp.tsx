@@ -1440,6 +1440,7 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
   const setActiveView = useMandateStore((s) => s.setActiveView);
   const [paying, setPaying] = useState(false);
   const [paidOrder, setPaidOrder] = useState<string | null>(null);
+  const [orderCompleted, setOrderCompleted] = useState(false);
   const [submittedApproval, setSubmittedApproval] = useState<string | null>(null);
 
   if (customProduct && !customProduct.name && typeof customProduct.price !== "number") {
@@ -1516,27 +1517,23 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
             order.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
             `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}`;
 
-          // Directly sync to store transactions and ledger
+          setPaidOrder(order.id);
+          setOrderCompleted(false);
+
+          // Add to store transactions as pending payment (not settled until captured)
           useMandateStore.getState().addTransaction({
             id: order.id,
             merchant: product.merchant,
             item: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
             amount: product.price,
             category: product.category,
-            status: "completed",
-            verdict: "APPROVE",
+            status: "pending",
+            verdict: "PENDING_PAYMENT",
             ruleId: "MND-LIM-012",
-            reason: `Auto-approved: ${product.category} at or below $${autoApproveLimit} limit`,
+            reason: `Auto-approved: ${product.category} at or below $${autoApproveLimit} limit. Awaiting payment checkout.`,
             paypalOrderId: order.id,
             paypalApproveLink: approveLink,
           });
-
-          mandateApi.completeTransaction(order.id, {
-            paypal_order_id: order.id,
-            amount_cents: Math.round(product.price * 100),
-            merchant: product.merchant,
-            description: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
-          }).catch(() => {});
 
           toast.success("PayPal Sandbox Order Created!", {
             description: `Order ID: ${order.id}. Opening Sandbox checkout window...`,
@@ -1619,6 +1616,7 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
       }
 
       setPaidOrder(orderId);
+      setOrderCompleted(false);
 
       useMandateStore.getState().addTransaction({
         id: orderId,
@@ -1626,10 +1624,10 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
         item: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
         amount: product.price,
         category: product.category,
-        status: "completed",
-        verdict: "APPROVE",
+        status: "pending",
+        verdict: "PENDING_PAYMENT",
         ruleId: "MND-MGR-OVERRIDE",
-        reason: `Authorized by root manager: ${product.name}`,
+        reason: `Authorized by root manager: ${product.name}. Awaiting PayPal payment capture.`,
         paypalOrderId: orderId,
         paypalApproveLink: approveLink,
       });
@@ -1719,56 +1717,146 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
               <span>PayPal Orders v2 Sandbox</span>
             </div>
             {paidOrder ? (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
-                <div className="flex items-center gap-2 text-xs text-safe font-medium">
-                  <Check className="size-4 shrink-0 text-safe" />
-                  <span>COMPLETED · Order {paidOrder.slice(0, 12)}... captured</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
-                  >
-                    <a
-                      href={`https://www.sandbox.paypal.com/checkoutnow?token=${paidOrder}`}
-                      target="_blank"
-                      rel="noreferrer"
+              orderCompleted ? (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
+                  <div className="flex items-center gap-2 text-xs text-safe font-medium">
+                    <Check className="size-4 shrink-0 text-safe" />
+                    <span>PAID · Order {paidOrder.slice(0, 12)}... captured & settled</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
                     >
-                      <ExternalLink className="size-3.5 text-paypal" />
-                      PayPal Receipt
-                    </a>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveView("transactions")}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    View in Transactions →
-                  </Button>
+                      <a
+                        href={`https://www.sandbox.paypal.com/checkoutnow?token=${paidOrder}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="size-3.5 text-paypal" />
+                        PayPal Receipt
+                      </a>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setActiveView("transactions")}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      View in Transactions →
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 w-full">
+                  <div className="flex items-center gap-2 text-xs text-warning font-medium">
+                    <Clock3 className="size-4 shrink-0 text-warning" />
+                    <span>UNPAID · PayPal Sandbox Order Created ({paidOrder.slice(0, 12)}...)</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="paypal"
+                      size="sm"
+                      asChild
+                      className="gap-1.5 text-xs font-semibold shadow-sm"
+                    >
+                      <a
+                        href={`https://www.sandbox.paypal.com/checkoutnow?token=${paidOrder}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        Pay in PayPal
+                      </a>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
+                      onClick={() => {
+                        useMandateStore.getState().completeTransaction(paidOrder);
+                        mandateApi.completeTransaction?.(paidOrder, {
+                          paypal_order_id: paidOrder,
+                          amount_cents: Math.round(product.price * 100),
+                          merchant: product.merchant,
+                          description: product.name,
+                        })?.catch?.(() => {});
+                        setOrderCompleted(true);
+                        toast.success("Payment confirmed captured and settled!");
+                      }}
+                    >
+                      <Check className="size-3.5" />
+                      I Have Paid
+                    </Button>
+                  </div>
+                </div>
+              )
             ) : submittedApproval ? (
               (() => {
                 const req = useMandateStore.getState().requests.find((r) => r.id === submittedApproval);
                 const isApproved = req?.status === "approved";
                 if (isApproved) {
-                  return (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
-                      <div className="flex items-center gap-2 text-xs text-safe font-medium">
-                        <Check className="size-4 shrink-0 text-safe" />
-                        <span>COMPLETED · Approved by Manager in Approvals Center</span>
+                  if (req.payment_completed) {
+                    return (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-safe/40 bg-safe-soft/30 p-3 w-full">
+                        <div className="flex items-center gap-2 text-xs text-safe font-medium">
+                          <Check className="size-4 shrink-0 text-safe" />
+                          <span>PAID · Approved by Manager & Captured</span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveView("transactions")}
+                          className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
+                        >
+                          View in Transactions →
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveView("transactions")}
-                        className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
-                      >
-                        View in Transactions →
-                      </Button>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 w-full">
+                      <div className="flex items-center gap-2 text-xs text-warning font-medium">
+                        <Clock3 className="size-4 shrink-0 text-warning" />
+                        <span>APPROVED · Awaiting PayPal payment capture</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="paypal"
+                          size="sm"
+                          asChild
+                          className="gap-1.5 text-xs font-semibold shadow-sm"
+                        >
+                          <a
+                            href={req.paypal_order_id ? `https://www.sandbox.paypal.com/checkoutnow?token=${req.paypal_order_id}` : `https://www.sandbox.paypal.com`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ExternalLink className="size-3.5" />
+                            Pay in PayPal
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
+                          onClick={() => {
+                            useMandateStore.getState().markRequestPaid(req.id, req.paypal_order_id);
+                            mandateApi.completeTransaction?.(req.id, {
+                              paypal_order_id: req.paypal_order_id,
+                              amount_cents: Math.round(req.amount * 100),
+                              merchant: req.merchant,
+                              description: req.item,
+                            })?.catch?.(() => {});
+                            toast.success("Payment marked as captured!");
+                          }}
+                        >
+                          <Check className="size-3.5" />
+                          I Have Paid
+                        </Button>
+                      </div>
                     </div>
                   );
                 }
@@ -2176,7 +2264,7 @@ function Approvals() {
           approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
         }
 
-        // Persistent active checkout banner so popup blocker can never block checkout
+        // Persistent active checkout banner with pending payment state
         setCheckoutSession({
           id,
           merchant: targetReq?.merchant || "Vendor",
@@ -2184,34 +2272,26 @@ function Approvals() {
           amount: targetReq?.amount || 299.97,
           orderId,
           approveLink,
-          completed: true,
+          completed: false,
         });
 
-        // Add to completed transactions in store
+        // Add to store transactions as pending (awaiting payment checkout)
         useMandateStore.getState().addTransaction({
           id: orderId,
           merchant: targetReq?.merchant || "Vendor",
           item: targetReq?.item || "Approved order",
           amount: targetReq?.amount || 299.97,
           category: "Electronics",
-          status: "completed",
-          verdict: "APPROVE",
+          status: "pending",
+          verdict: "PENDING_PAYMENT",
           ruleId: "MND-HITL-001",
-          reason: "Approved by manager via Approvals Center.",
+          reason: "Approved by manager via Approvals Center. Awaiting PayPal Sandbox checkout.",
           paypalOrderId: orderId,
           paypalApproveLink: approveLink,
         });
 
-        // Sync completion to backend
-        mandateApi.completeTransaction?.(id, {
-          paypal_order_id: orderId,
-          amount_cents: targetReq ? Math.round(targetReq.amount * 100) : 29997,
-          merchant: targetReq?.merchant || "Vendor",
-          description: targetReq?.item || "Approved order",
-        })?.catch?.(() => {});
-
-        toast.success("Payment approved & PayPal Order Created!", {
-          description: `Order ${orderId}. Opening PayPal Sandbox Checkout...`,
+        toast.success("Purchase approved! PayPal Sandbox Order Created", {
+          description: `Order ${orderId}. Launching Sandbox Checkout...`,
         });
 
         try {
@@ -2258,18 +2338,31 @@ function Approvals() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border-2 border-paypal/60 bg-card p-5 shadow-lg space-y-3"
+          className={cn(
+            "rounded-lg border-2 p-5 shadow-lg space-y-3",
+            checkoutSession.completed ? "border-safe/60 bg-card" : "border-warning/60 bg-card"
+          )}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-safe/20 text-safe">
-                <Check className="size-6 text-safe" />
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                  checkoutSession.completed ? "bg-safe/20 text-safe" : "bg-warning/20 text-warning"
+                )}
+              >
+                {checkoutSession.completed ? <Check className="size-6 text-safe" /> : <Clock3 className="size-6 text-warning" />}
               </div>
               <div>
                 <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                  <span>Order Approved & PayPal Order Generated</span>
-                  <span className="rounded bg-safe/20 text-safe text-[10px] font-mono px-2 py-0.5 font-bold uppercase">
-                    COMPLETED & AUTHORIZED
+                  <span>{checkoutSession.completed ? "Payment Captured & Settled" : "Order Approved · Awaiting PayPal Payment"}</span>
+                  <span
+                    className={cn(
+                      "rounded text-[10px] font-mono px-2 py-0.5 font-bold uppercase",
+                      checkoutSession.completed ? "bg-safe/20 text-safe" : "bg-warning/20 text-warning"
+                    )}
+                  >
+                    {checkoutSession.completed ? "PAID · SETTLED" : "UNPAID · PENDING"}
                   </span>
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -2277,23 +2370,60 @@ function Approvals() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="paypal"
-                size="sm"
-                asChild
-                className="gap-2 text-xs font-semibold shadow-md"
-              >
-                <a href={checkoutSession.approveLink} target="_blank" rel="noreferrer">
-                  <ExternalLink className="size-3.5" />
-                  Launch PayPal Checkout ({checkoutSession.orderId.slice(0, 10)}...)
-                </a>
-              </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {!checkoutSession.completed ? (
+                <>
+                  <Button
+                    variant="paypal"
+                    size="sm"
+                    asChild
+                    className="gap-2 text-xs font-semibold shadow-md"
+                  >
+                    <a href={checkoutSession.approveLink} target="_blank" rel="noreferrer">
+                      <ExternalLink className="size-3.5" />
+                      Pay in PayPal Sandbox
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
+                    onClick={() => {
+                      useMandateStore.getState().completeTransaction(checkoutSession.orderId);
+                      useMandateStore.getState().markRequestPaid(checkoutSession.id, checkoutSession.orderId);
+                      mandateApi.completeTransaction?.(checkoutSession.id, {
+                        paypal_order_id: checkoutSession.orderId,
+                        amount_cents: Math.round(checkoutSession.amount * 100),
+                        merchant: checkoutSession.merchant,
+                        description: checkoutSession.item,
+                      })?.catch?.(() => {});
+                      setCheckoutSession((prev: any) => prev ? { ...prev, completed: true } : null);
+                      toast.success("Payment confirmed captured! Transaction marked settled.");
+                    }}
+                  >
+                    <Check className="size-3.5" />
+                    I Have Completed Payment
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveView("transactions")}
+                  className="gap-1.5 text-xs border-safe/40 hover:bg-safe/10 text-foreground"
+                >
+                  View in Transactions →
+                </Button>
+              )}
             </div>
           </div>
           <div className="rounded bg-muted/40 border border-border p-2.5 text-[11px] font-mono text-muted-foreground flex flex-wrap items-center justify-between gap-2">
             <span>PayPal Order ID: <strong className="text-foreground">{checkoutSession.orderId}</strong></span>
-            <span className="text-safe flex items-center gap-1.5"><Check className="size-3" /> Recorded in Transactions, Audit Log & Dashboard</span>
+            {checkoutSession.completed ? (
+              <span className="text-safe flex items-center gap-1.5"><Check className="size-3" /> Settled in Transactions & Dashboard</span>
+            ) : (
+              <span className="text-warning flex items-center gap-1.5"><Clock3 className="size-3" /> Marked as Unpaid · Pending in Transactions until payment capture</span>
+            )}
           </div>
         </motion.div>
       )}
