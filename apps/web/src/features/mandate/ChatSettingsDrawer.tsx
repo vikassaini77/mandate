@@ -52,9 +52,29 @@ export function ChatSettingsDrawer() {
     }
   };
 
-  const [creativity, setCreativity] = useState([35]);
-  const [memory, setMemory] = useState(true);
-  const [tools, setTools] = useState({ search: true, compare: true, purchase: false });
+  const [creativity, setCreativity] = useState<number[]>(() => {
+    const saved = localStorage.getItem("mnd_chat_creativity");
+    return saved ? [Number(saved)] : [35];
+  });
+  const [chatModel, setChatModel] = useState(() => localStorage.getItem("mnd_agent_model") || "astra");
+  const [responseStyle, setResponseStyle] = useState(() => localStorage.getItem("mnd_chat_style") || "concise");
+  const [memory, setMemory] = useState(() => localStorage.getItem("mnd_remember_prefs") !== "false");
+  const [tools, setTools] = useState(() => ({
+    search: localStorage.getItem("mnd_tool_search") !== "false",
+    compare: localStorage.getItem("mnd_tool_compare") !== "false",
+    purchase: localStorage.getItem("mnd_tool_checkout") === "true",
+  }));
+
+  const handleToolChange = (tool: "search" | "compare" | "purchase", checked: boolean) => {
+    setTools((prev) => {
+      const updated = { ...prev, [tool]: checked };
+      if (tool === "search") localStorage.setItem("mnd_tool_search", String(checked));
+      if (tool === "compare") localStorage.setItem("mnd_tool_compare", String(checked));
+      if (tool === "purchase") localStorage.setItem("mnd_tool_checkout", String(checked));
+      return updated;
+    });
+    toast.success(`Agent tool: ${tool} ${checked ? "granted" : "revoked"}`);
+  };
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -97,7 +117,14 @@ export function ChatSettingsDrawer() {
           </SettingGroup>
           <SettingGroup title="Model & response">
             <Field label="Model">
-              <Select defaultValue="astra">
+              <Select
+                value={chatModel}
+                onValueChange={(val) => {
+                  setChatModel(val);
+                  localStorage.setItem("mnd_agent_model", val);
+                  toast.success(`Agent reasoning model set to ${val}`);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -105,11 +132,19 @@ export function ChatSettingsDrawer() {
                   <SelectItem value="astra">Astra · reasoned</SelectItem>
                   <SelectItem value="swift">Swift · fast</SelectItem>
                   <SelectItem value="deep">Deep analyst</SelectItem>
+                  <SelectItem value="claude">Claude 3.5 Sonnet</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
             <Field label="Response style">
-              <Select defaultValue="concise">
+              <Select
+                value={responseStyle}
+                onValueChange={(val) => {
+                  setResponseStyle(val);
+                  localStorage.setItem("mnd_chat_style", val);
+                  toast.success(`Agent response style set to ${val}`);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -121,7 +156,15 @@ export function ChatSettingsDrawer() {
               </Select>
             </Field>
             <Field label={`Creativity · ${creativity[0] ?? 35}%`}>
-              <Slider value={creativity} onValueChange={setCreativity} max={100} step={5} />
+              <Slider
+                value={creativity}
+                onValueChange={(val) => {
+                  setCreativity(val);
+                  localStorage.setItem("mnd_chat_creativity", String(val[0]));
+                }}
+                max={100}
+                step={5}
+              />
             </Field>
           </SettingGroup>
           <SettingGroup title="Tool permissions">
@@ -134,9 +177,7 @@ export function ChatSettingsDrawer() {
                     : `${tool.charAt(0).toUpperCase()}${tool.slice(1)} products`
                 }
                 checked={tools[tool]}
-                onCheckedChange={(checked) =>
-                  setTools((current) => ({ ...current, [tool]: checked }))
-                }
+                onCheckedChange={(checked) => handleToolChange(tool, checked)}
               />
             ))}
           </SettingGroup>

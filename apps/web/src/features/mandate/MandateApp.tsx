@@ -190,12 +190,14 @@ const suggested = [
   "Compare webcams for remote work",
   "Can I expense a mechanical keyboard?",
 ];
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("en-US", {
+const formatMoney = (value: number) => {
+  const currency = typeof window !== "undefined" ? localStorage.getItem("mnd_currency") || "USD" : "USD";
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: currency,
     minimumFractionDigits: value % 1 ? 2 : 0,
   }).format(value);
+};
 
 export function MandateApp({
   initialView = "dashboard",
@@ -453,8 +455,8 @@ export function MandateApp({
             <p className="truncate font-display text-sm font-semibold">
               {navItems.find((item) => item.id === view)?.label}
             </p>
-            <p className="hidden font-mono text-[9px] text-muted-foreground sm:block">
-              CONTROL ROOM / PRODUCTION
+            <p className="hidden font-mono text-[9px] uppercase text-muted-foreground sm:block">
+              {((typeof window !== "undefined" && localStorage.getItem("mnd_ws_name")) || "CONTROL ROOM")} / PRODUCTION
             </p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
@@ -467,50 +469,66 @@ export function MandateApp({
               <Search />
               Search<kbd className="ml-2 font-mono text-[9px] text-muted-foreground">⌘K</kbd>
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              aria-label="Notifications" 
-              className="relative"
-              onClick={() => {
-                if (pendingCount > 0) {
-                  toast.warning("Approvals Pending", {
-                    description: `${pendingCount} purchase request(s) require manager review in the Approvals Center.`,
-                    action: {
-                      label: "Review",
-                      onClick: () => chooseView("approvals"),
-                    },
-                    icon: <Bell className="size-4 text-warning" />,
-                  });
-                } else if (blockedCount > 0) {
-                  toast.error("Security Alert", {
-                    description: `Sentinel Policy Engine successfully contained ${blockedCount} unauthorized transaction attempt(s).`,
-                    action: {
-                      label: "Audit",
-                      onClick: () => chooseView("audit"),
-                    },
-                    icon: <Bell className="size-4 text-danger" />,
-                  });
-                } else {
-                  toast.success("System Nominal", {
-                    description: "Zero pending approvals. Sentinel Engine actively monitoring transaction flow.",
-                    icon: <Bell className="size-4 text-safe" />,
-                  });
-                }
-              }}
-            >
-              <Bell />
-              <span
-                className={cn(
-                  "absolute right-2 top-2 size-1.5 rounded-full",
-                  pendingCount > 0
-                    ? "bg-warning animate-pulse"
-                    : blockedCount > 0
-                      ? "bg-danger"
-                      : "bg-safe"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  aria-label="Notifications" 
+                  className="relative"
+                >
+                  <Bell />
+                  <span
+                    className={cn(
+                      "absolute right-2 top-2 size-1.5 rounded-full",
+                      pendingCount > 0
+                        ? "bg-warning animate-pulse"
+                        : blockedCount > 0
+                          ? "bg-danger"
+                          : "bg-safe"
+                    )}
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 rounded-none border-[#2A2A2A] bg-[#121212] p-2 space-y-1">
+                <div className="flex items-center justify-between px-2 py-1.5 border-b border-[#2A2A2A]">
+                  <p className="font-mono text-xs uppercase font-semibold text-[#EAEAEA]">Notifications</p>
+                  <span className="font-mono text-[9px] text-muted-foreground">REAL-TIME</span>
+                </div>
+                {pendingCount > 0 && (
+                  <DropdownMenuItem 
+                    onClick={() => chooseView("approvals")} 
+                    className="flex flex-col items-start gap-1 p-2.5 cursor-pointer hover:bg-warning/10"
+                  >
+                    <div className="flex items-center gap-2 text-warning text-xs font-semibold">
+                      <Clock3 className="size-3.5" />
+                      <span>{pendingCount} Approval(s) Pending</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Purchases require human-in-the-loop signoff. Click to review.
+                    </p>
+                  </DropdownMenuItem>
                 )}
-              />
-            </Button>
+                {blockedCount > 0 && (
+                  <DropdownMenuItem 
+                    onClick={() => chooseView("audit")} 
+                    className="flex flex-col items-start gap-1 p-2.5 cursor-pointer hover:bg-danger/10"
+                  >
+                    <div className="flex items-center gap-2 text-danger text-xs font-semibold">
+                      <ShieldAlert className="size-3.5" />
+                      <span>{blockedCount} Attack(s) Contained</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Unauthorized attempts blocked by Sentinel. View audit ledger.
+                    </p>
+                  </DropdownMenuItem>
+                )}
+                <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-safe" />
+                  <span>Sentinel Policy Engine nominal (12ms latency)</span>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open profile menu">
