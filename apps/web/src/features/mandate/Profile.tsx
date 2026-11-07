@@ -267,7 +267,19 @@ Cryptographic Seal: SHA256:${Array.from({ length: 64 }, () => Math.floor(Math.ra
 
   const handleSignOutEverywhere = () => {
     setSignOutOpen(false);
-    toast.success("All 3 active session tokens revoked across all devices and API clients.");
+    try {
+      const saved = localStorage.getItem("mnd_active_sessions");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const onlyCurrent = parsed.filter((s: any) => s.isCurrent);
+          localStorage.setItem("mnd_active_sessions", JSON.stringify(onlyCurrent));
+        }
+      }
+    } catch {
+      // ignore
+    }
+    toast.success("All other active session tokens revoked across all devices and API clients.");
   };
 
   const handleDeleteAccount = () => {

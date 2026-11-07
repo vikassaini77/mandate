@@ -83,6 +83,75 @@ interface SessionItem {
   iconType: "laptop" | "mobile";
 }
 
+function detectCurrentClient(): {
+  device: string;
+  location: string;
+  iconType: "laptop" | "mobile";
+} {
+  if (typeof window === "undefined" || !navigator) {
+    return {
+      device: "Web Browser",
+      location: "Active session",
+      iconType: "laptop",
+    };
+  }
+
+  const ua = navigator.userAgent;
+
+  // 1. Detect Operating System
+  let os = "Windows";
+  if (/Windows|Win32|Win64/i.test(ua)) {
+    os = "Windows";
+  } else if (/Macintosh|Mac OS X|MacIntel/i.test(ua)) {
+    os = "macOS";
+  } else if (/Android/i.test(ua)) {
+    os = "Android";
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    os = "iOS";
+  } else if (/Linux/i.test(ua)) {
+    os = "Linux";
+  }
+
+  // 2. Detect Browser Engine / Name
+  let browser = "Browser";
+  if (/Edg\//i.test(ua)) {
+    browser = "Edge";
+  } else if (/OPR\/|Opera/i.test(ua)) {
+    browser = "Opera";
+  } else if (/Chrome\//i.test(ua)) {
+    browser = "Chrome";
+  } else if (/Firefox\//i.test(ua)) {
+    browser = "Firefox";
+  } else if (/Safari\//i.test(ua)) {
+    browser = "Safari";
+  }
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+
+  // 3. Fallback location via Intl TimeZone
+  let fallbackLocation = "Local network";
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) {
+      if (tz === "Asia/Calcutta" || tz === "Asia/Kolkata") {
+        fallbackLocation = "India (IST)";
+      } else {
+        const parts = tz.split("/");
+        const city = parts[parts.length - 1]?.replace(/_/g, " ");
+        fallbackLocation = city ? `${city} (${parts[0]})` : tz;
+      }
+    }
+  } catch {
+    // fallback default
+  }
+
+  return {
+    device: `${browser} on ${os}`,
+    location: `${fallbackLocation} · Current session`,
+    iconType: isMobile ? "mobile" : "laptop",
+  };
+}
+
 export function Settings() {
   const queryClient = useQueryClient();
   const { data: mandateData } = useQuery({
@@ -177,11 +246,88 @@ export function Settings() {
     ];
   });
 
-  const [sessions, setSessions] = useState<SessionItem[]>([
-    { id: "sess_1", device: "Chrome on macOS", location: "Jaipur, India · Current session", isCurrent: true, iconType: "laptop" },
-    { id: "sess_2", device: "Safari on iPhone", location: "Jaipur, India · 2 hours ago", isCurrent: false, iconType: "mobile" },
-    { id: "sess_3", device: "Firefox on Windows", location: "New Delhi, India · 1 day ago", isCurrent: false, iconType: "laptop" }
-  ]);
+  const [sessions, setSessions] = useState<SessionItem[]>(() => {
+    const client = detectCurrentClient();
+    const saved = localStorage.getItem("mnd_active_sessions");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as SessionItem[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Remove outdated legacy dummy fixtures
+          const sanitized = parsed.filter(
+            (s) =>
+              !["sess_1", "sess_2", "sess_3"].includes(s.id) &&
+              !s.device.toLowerCase().includes("chrome on macos")
+          );
+          if (sanitized.length > 0) {
+            return sanitized.map((s) =>
+              s.isCurrent
+                ? {
+                    ...s,
+                    device: client.device,
+                    iconType: client.iconType,
+                    location: s.location.includes("Current session")
+                      ? s.location
+                      : client.location,
+                  }
+                : s
+            );
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    return [
+      {
+        id: "sess_current",
+        device: client.device,
+        location: client.location,
+        isCurrent: true,
+        iconType: client.iconType,
+      },
+    ];
+  });
+
+  // Client-side real IP Geolocation resolution
+  useEffect(() => {
+    let active = true;
+
+    const detectLocation = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch("https://ipwho.is/", { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (active && data && data.success) {
+            const city = data.city || "";
+            const region = data.region || data.country || "";
+            const formatted = city && region ? `${city}, ${region}` : data.country || "Online";
+            const newLoc = `${formatted} · Current session`;
+
+            setSessions((prev) => {
+              const updated = prev.map((s) =>
+                s.isCurrent ? { ...s, location: newLoc } : s
+              );
+              localStorage.setItem("mnd_active_sessions", JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }
+      } catch {
+        // Graceful fallback to Intl Timezone already applied
+      }
+    };
+
+    detectLocation();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleCreateApiKey = () => {
     const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(10)))
@@ -230,8 +376,21 @@ export function Settings() {
   };
 
   const handleRevokeSession = (sessionId: string, deviceName: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== sessionId);
+      localStorage.setItem("mnd_active_sessions", JSON.stringify(updated));
+      return updated;
+    });
     toast.success(`Session for ${deviceName} terminated.`);
+  };
+
+  const handleRevokeOtherSessions = () => {
+    setSessions((prev) => {
+      const onlyCurrent = prev.filter((s) => s.isCurrent);
+      localStorage.setItem("mnd_active_sessions", JSON.stringify(onlyCurrent));
+      return onlyCurrent;
+    });
+    toast.success("All other device sessions have been revoked.");
   };
 
   // 5. Integrations State
@@ -344,12 +503,12 @@ export function Settings() {
       "mnd_agent_model", "mnd_agent_personality", "mnd_agent_autonomy",
       "mnd_tool_search", "mnd_tool_compare", "mnd_tool_checkout",
       "mnd_notif_email", "mnd_notif_push", "mnd_notif_sms", "mnd_notif_weekly",
-      "mnd_quiet_start", "mnd_quiet_end", "mnd_api_keys", "mnd_accounting_provider",
+      "mnd_quiet_start", "mnd_quiet_end", "mnd_api_keys", "mnd_active_sessions", "mnd_accounting_provider",
       "mnd_density", "mnd_2fa"
     ];
     keysToRemove.forEach((k) => localStorage.removeItem(k));
     setApiKeys([]);
-    setSessions(sessions.filter((s) => s.isCurrent));
+    setSessions((prev) => prev.filter((s) => s.isCurrent));
     setAccountingProvider(null);
     toast.success("Workspace cache, keys, and configured preferences wiped clean.");
   };
@@ -570,7 +729,22 @@ export function Settings() {
                 }
               />
 
-              <h3 className="mt-7 text-xs font-semibold">Active sessions</h3>
+              <div className="mt-7 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-semibold">Active sessions</h3>
+                  <p className="text-[11px] text-muted-foreground">Devices currently authenticated to your workspace</p>
+                </div>
+                {sessions.filter((s) => !s.isCurrent).length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRevokeOtherSessions}
+                  >
+                    Revoke other sessions
+                  </Button>
+                )}
+              </div>
+
               <div className="mt-3 space-y-2">
                 {sessions.map((sess) => (
                   <Session
@@ -582,6 +756,12 @@ export function Settings() {
                     onRevoke={() => handleRevokeSession(sess.id, sess.device)}
                   />
                 ))}
+                {sessions.filter((s) => !s.isCurrent).length === 0 && (
+                  <div className="flex items-center gap-2 rounded-md border border-border/50 bg-subtle/50 px-3 py-2 text-[11px] text-muted-foreground">
+                    <Check className="size-3.5 text-safe" />
+                    <span>Your account is active only on this device. No unrecognized sessions detected.</span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-7 flex items-center justify-between">
