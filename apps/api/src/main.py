@@ -98,24 +98,142 @@ async def ml_health():
 
 @app.get("/api/activity")
 async def get_activity():
+    try:
+        from apps.api.src.routes.v1.endpoints.transactions import _TRANSACTIONS
+
+        if _TRANSACTIONS:
+            dynamic_activity = []
+            for tx in _TRANSACTIONS[:50]:
+                amount = tx.get("amount")
+                if amount is None:
+                    amount = (tx.get("amount_cents", 0) or 0) / 100.0
+
+                verdict = str(tx.get("verdict", "APPROVE")).lower()
+                decision = "approved" if verdict == "approve" else ("blocked" if verdict == "block" else "review")
+
+                dynamic_activity.append({
+                    "id": tx.get("id"),
+                    "merchant": tx.get("merchant", "Vendor"),
+                    "item": tx.get("description", f"{tx.get('category', 'General')} order"),
+                    "amount": round(amount, 2),
+                    "decision": decision,
+                    "time": tx.get("timestamp", "Recent"),
+                    "rule": tx.get("rule_id", "MND-AUTO-01"),
+                })
+            return dynamic_activity
+    except Exception as e:
+        print("Error serving dynamic activity:", e)
+
     return activity
+
 
 @app.get("/api/audit-events")
 async def get_audit_events():
+    try:
+        from packages.database.hash_chain import global_audit_chain
+
+        if global_audit_chain.chain:
+            dynamic_audit = []
+            for idx, block in enumerate(reversed(global_audit_chain.chain[-200:])):
+                payload = block.get("payload", {})
+                verdict = str(payload.get("verdict", payload.get("decision", "APPROVE"))).upper()
+                amount_raw = payload.get("amount", payload.get("amount_cents", 0)) or 0
+                amount = float(amount_raw) / 100.0 if amount_raw > 1000 else float(amount_raw)
+
+                merchant = payload.get("merchant", "Verified Vendor")
+                category = payload.get("category", "General")
+                rule_id = payload.get("rule_id", "MND-POL-001")
+                timestamp = payload.get("timestamp") or str(block.get("timestamp", ""))
+
+                decision = "approved" if verdict == "APPROVE" else ("blocked" if verdict == "BLOCK" else "review")
+                event_type = (
+                    "payment.authorized"
+                    if verdict == "APPROVE"
+                    else ("purchase.blocked" if verdict == "BLOCK" else "policy.evaluated")
+                )
+
+                dynamic_audit.append({
+                    "id": f"evt_{idx + 1}_{block.get('hash', '')[:8]}",
+                    "timestamp": timestamp,
+                    "occurredAt": timestamp,
+                    "type": event_type,
+                    "summary": f"{verdict}: {merchant} · ${amount:.2f}",
+                    "verdict": verdict,
+                    "ruleId": rule_id,
+                    "ruleCode": rule_id,
+                    "rule": payload.get("reason", f"Evaluated under rule {rule_id}"),
+                    "reasoning": payload.get("reason", "Deterministic Policy Engine evaluation"),
+                    "merchant": merchant,
+                    "item": payload.get("description", f"{category} purchase"),
+                    "category": category,
+                    "amount": round(amount, 2),
+                    "decision": decision,
+                    "sha256": block.get("hash", ""),
+                    "paypalOrderId": payload.get("paypal_order_id"),
+                })
+            return dynamic_audit
+    except Exception as e:
+        print("Error serving dynamic audit events:", e)
+
     return auditRecords
+
 
 @app.get("/api/products")
 async def get_products():
     return products
 
+
 @app.get("/api/purchase-proposals")
 async def get_purchase_proposals():
     return purchaseProposals
+
 
 @app.get("/api/red-team-scenarios")
 async def get_red_team_scenarios():
     return redTeamScenarios
 
+
 @app.get("/api/spend-series")
 async def get_spend_series():
+    try:
+        from collections import defaultdict
+        from datetime import datetime
+
+        from apps.api.src.routes.v1.endpoints.transactions import _TRANSACTIONS
+
+        if _TRANSACTIONS:
+            daily_spend = defaultdict(lambda: {"approved": 0.0, "blocked": 0.0})
+
+            for tx in _TRANSACTIONS:
+                ts = tx.get("timestamp")
+                day_str = "Recent"
+                if ts:
+                    try:
+                        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        day_str = dt.strftime("%b %d")
+                    except Exception:
+                        pass
+
+                amount = tx.get("amount")
+                if amount is None:
+                    amount = (tx.get("amount_cents", 0) or 0) / 100.0
+
+                verdict = str(tx.get("verdict", "")).upper()
+                if verdict == "APPROVE":
+                    daily_spend[day_str]["approved"] += amount
+                elif verdict == "BLOCK":
+                    daily_spend[day_str]["blocked"] += amount
+
+            if daily_spend:
+                return [
+                    {
+                        "day": day,
+                        "approved": round(vals["approved"], 2),
+                        "blocked": round(vals["blocked"], 2),
+                    }
+                    for day, vals in daily_spend.items()
+                ][-7:]
+    except Exception as e:
+        print("Error serving dynamic spend series:", e)
+
     return spendData

@@ -1,3 +1,5 @@
+import json
+import os
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,9 +11,10 @@ from apps.api.src.services.auth import Principal, Role, get_current_principal, r
 
 router = APIRouter()
 
+
 class UpdateMandateRequest(BaseModel):
     monthly_cap_amount: Optional[int] = None
-    currency: Optional[str] = "USD"
+    currency: Optional[str] = None
     auto_approve_limit: Optional[int] = None
     daily_amount_cap: Optional[int] = None
     daily_purchase_count_cap: Optional[int] = None
@@ -19,14 +22,51 @@ class UpdateMandateRequest(BaseModel):
     blocked_categories: Optional[List[str]] = None
     blocked_merchants: Optional[List[str]] = None
 
-# Mock global store for the Hackathon/Demo
-_MOCK_MANDATES: Dict[str, MandateState] = {
-    "mandate_1": MandateState(
-        is_active=True,
-        monthly_cap_amount=500000,
-        rules=RuleConfig(auto_approve_limit=15000, daily_amount_cap=50000)
-    )
+_MANDATES_STORE = os.path.join(os.path.dirname(__file__), "mandates_store.json")
+
+_DEFAULT_MANDATES: Dict[str, dict] = {
+    "mandate_1": {
+        "is_active": True,
+        "monthly_cap_amount": 500000,
+        "rules": {
+            "auto_approve_limit": 15000,
+            "daily_amount_cap": 50000,
+            "daily_purchase_count_cap": 10,
+            "allowed_categories": ["Software", "Electronics", "Office", "Hardware", "General"],
+            "blocked_categories": ["Apparel", "Gambling", "Crypto"],
+            "blocked_merchants": ["Unknown vendor", "LuxuryYachts"]
+        }
+    }
 }
+
+_MOCK_MANDATES: Dict[str, MandateState] = {}
+
+
+def _load_mandates():
+    global _MOCK_MANDATES
+    if os.path.exists(_MANDATES_STORE):
+        try:
+            with open(_MANDATES_STORE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                _MOCK_MANDATES = {k: MandateState(**v) for k, v in data.items()}
+                return
+        except Exception as e:
+            print(f"Warning: Failed to load {_MANDATES_STORE}: {e}")
+
+    _MOCK_MANDATES = {k: MandateState(**v) for k, v in _DEFAULT_MANDATES.items()}
+    _save_mandates()
+
+
+def _save_mandates():
+    try:
+        with open(_MANDATES_STORE, "w", encoding="utf-8") as f:
+            json.dump({k: v.model_dump() for k, v in _MOCK_MANDATES.items()}, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Failed to save {_MANDATES_STORE}: {e}")
+
+
+# Initialize on import
+_load_mandates()
 
 @router.get('/')
 async def list_mandates(skip: int = 0, limit: int = 100, principal: Principal = Depends(get_current_principal)):   # noqa: E501
@@ -76,6 +116,8 @@ async def update_mandate(
     if payload.blocked_merchants is not None:
         rules.blocked_merchants = payload.blocked_merchants
 
+    _save_mandates()
+
     return {
         "status": "success",
         "message": f"Mandate {mandate_id} successfully updated on Policy Engine.",
@@ -96,6 +138,7 @@ async def kill_switch(
     mandate = _MOCK_MANDATES[mandate_id]
     mandate.kill_switch_engaged = True
     mandate.is_active = False
+    _save_mandates()
     
     return {"status": "success", "message": f"Agent {mandate_id} has been KILLED. All network and payment access revoked."}  # noqa: E501
 
@@ -108,6 +151,7 @@ async def activate_mandate(
         raise HTTPException(status_code=404, detail="Mandate not found")
     _MOCK_MANDATES[mandate_id].kill_switch_engaged = False
     _MOCK_MANDATES[mandate_id].is_active = True
+    _save_mandates()
     return {"status": "success", "message": f"Agent {mandate_id} is now ACTIVE."}
 
 @router.post('/simulate')

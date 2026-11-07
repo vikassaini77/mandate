@@ -1,5 +1,95 @@
 [
   {
+    "id": "prop_d5d2583b",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-03-MERCHANT",
+    "reason": "Blocked: Merchant 'LuxuryYachts' is explicitly blocked.",
+    "audit_hash": "8450b7cac7c80c6ca3df857fa5cc8ecf61db5b9992041336759132bd806e6750",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-11-07T05:31:13.099703+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_1ebf2cd1",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "73e1967ccbf1eec741bbe45f8a68fbf78a0bb5a108e36ff0a114c0e2fad177b9",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-07T05:31:13.087559+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_2cf93603"
+  },
+  {
+    "id": "prop_eb5c3bc8",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "f99f1a642a461e5d701d65b070ae4ed37e56bfd42e573275540179e431d1590f",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-07T05:31:10.196422+00:00",
+    "paypal_order": {
+      "id": "3DY10963CN755504G",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "3DY10963CN755504G",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "prop_eb5c3bc8",
+            "amount": {
+              "currency_code": "USD",
+              "value": "50.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/3DY10963CN755504G",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=3DY10963CN755504G",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
     "id": "prop_d28d692a",
     "amount_cents": 99999999,
     "merchant": "LuxuryYachts",

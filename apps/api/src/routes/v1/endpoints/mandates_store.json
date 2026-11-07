@@ -1,0 +1,37 @@
+{
+  "mandate_1": {
+    "is_active": true,
+    "expires_at": null,
+    "kill_switch_engaged": false,
+    "monthly_cap_amount": 500000,
+    "currency": "USD",
+    "supported_currencies": [
+      "USD"
+    ],
+    "rules": {
+      "allowed_categories": [
+        "Software",
+        "Electronics",
+        "Office",
+        "Hardware",
+        "General"
+      ],
+      "blocked_categories": [
+        "Apparel",
+        "Gambling",
+        "Crypto"
+      ],
+      "blocked_merchants": [
+        "Unknown vendor",
+        "LuxuryYachts"
+      ],
+      "daily_purchase_count_cap": 10,
+      "daily_amount_cap": 50000,
+      "auto_approve_limit": 15000,
+      "allowed_time_windows": [
+        "00:00-23:59"
+      ]
+    },
+    "trust_score": 100.0
+  }
+}

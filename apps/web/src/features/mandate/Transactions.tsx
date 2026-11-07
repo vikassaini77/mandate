@@ -116,6 +116,7 @@ const seed: Payment[] = [
 
 export function Transactions() {
   const requests = useMandateStore((state) => state.requests);
+  const storeTransactions = useMandateStore((state) => state.transactions || []);
   const [payments, setPayments] = useState(seed);
   const [backendPayments, setBackendPayments] = useState<Payment[]>([]);
   const [refunds, setRefunds] = useState<Record<string, number>>({});
@@ -181,6 +182,21 @@ export function Transactions() {
       }));
   }, [requests]);
 
+  const mappedStoreTx = useMemo(() => {
+    return storeTransactions.map((tx) => ({
+      id: tx.paypalOrderId || tx.id,
+      merchant: tx.merchant,
+      item: tx.item,
+      amount: tx.amount,
+      status: (tx.status === "denied" ? "failed" : tx.status) as PaymentStatus,
+      date: tx.date || "Just now",
+      mandate: tx.mandate || (tx.ruleId ? `Rule ${tx.ruleId}` : "Autonomous Mandate"),
+      verdict: `${tx.verdict || (tx.status === "denied" ? "BLOCK" : "APPROVE")} · ${tx.ruleId || "MND-AUTO"}`,
+      refunded: tx.refunded || 0,
+      employee: tx.employee || "Security Agent",
+    }));
+  }, [storeTransactions]);
+
   const allPayments = useMemo(() => {
     const map = new Map<string, Payment>();
     // 1. Approved items from the approval store (reactive & instant)
@@ -192,7 +208,18 @@ export function Transactions() {
         status: refundedAmt >= p.amount ? "refunded" : p.status,
       });
     }
-    // 2. Real completed transactions from the backend
+    // 2. Direct transactions from the store (e.g. from chat checkout)
+    for (const p of mappedStoreTx) {
+      if (!map.has(p.id)) {
+        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
+        map.set(p.id, {
+          ...p,
+          refunded: refundedAmt,
+          status: refundedAmt >= p.amount ? "refunded" : p.status,
+        });
+      }
+    }
+    // 3. Real completed transactions from the backend
     for (const p of backendPayments) {
       if (!map.has(p.id)) {
         const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
@@ -203,7 +230,7 @@ export function Transactions() {
         });
       }
     }
-    // 3. Base seed payments
+    // 4. Base seed payments
     for (const p of payments) {
       if (!map.has(p.id)) {
         const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
@@ -216,7 +243,7 @@ export function Transactions() {
     }
 
     return Array.from(map.values());
-  }, [approvedFromStore, backendPayments, payments, refunds]);
+  }, [approvedFromStore, mappedStoreTx, backendPayments, payments, refunds]);
 
   const metrics = useMemo(() => {
     // Settled this month: sum of all completed & refunded payments

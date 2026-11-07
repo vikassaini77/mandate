@@ -109,7 +109,7 @@ const mockApi: MandateApi = {
   },
 };
 
-const mocksEnabled = import.meta.env["VITE_USE_MOCKS"] !== "false";
+const mocksEnabled = import.meta.env["VITE_USE_MOCKS"] === "true";
 
 export const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
 export const API_V1_URL = `${BACKEND_URL}/api/v1`;
@@ -207,28 +207,46 @@ const realApi: MandateApi = {
     return { status: 'success' };
   },
   async getActivity() {
-    const res = await fetch(`${BACKEND_URL}/api/activity`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/activity`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return activity;
   },
   async getAuditEvents() {
-    const res = await fetch(`${BACKEND_URL}/api/audit-events`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/audit-events`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return auditRecords;
   },
   async getProducts() {
-    const res = await fetch(`${BACKEND_URL}/api/products`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/products`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return products;
   },
   async getPurchaseProposals() {
-    const res = await fetch(`${BACKEND_URL}/api/purchase-proposals`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/purchase-proposals`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return purchaseProposals;
   },
   async getRedTeamScenarios() {
-    const res = await fetch(`${BACKEND_URL}/api/red-team-scenarios`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/red-team-scenarios`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return redTeamScenarios;
   },
   async getSpendSeries() {
-    const res = await fetch(`${BACKEND_URL}/api/spend-series`);
-    return res.json();
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/spend-series`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return spendData;
   },
 };
 

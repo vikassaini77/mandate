@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import {
   CalendarDays,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { API_V1_URL } from "./api";
+import { API_V1_URL, mandateApi } from "./api";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -42,6 +43,10 @@ const VIEWPORT_HEIGHT = 456;
 
 export function AuditLog() {
   const storeTransactions = useMandateStore((state) => state.transactions) || [];
+  const { data: serverAudit } = useQuery({
+    queryKey: ["audit-events"],
+    queryFn: mandateApi.getAuditEvents,
+  });
   const [mode, setMode] = useState<"table" | "timeline">("table");
   const [query, setQuery] = useState("");
   const [verdict, setVerdict] = useState("all");
@@ -57,19 +62,36 @@ export function AuditLog() {
     const storeRecords: AuditRecord[] = storeTransactions.map((tx) => ({
       id: tx.id,
       occurredAt: tx.date || new Date().toISOString(),
+      displayTime: tx.date || "Just now",
+      timestamp: tx.date || new Date().toISOString(),
+      type: tx.verdict === "BLOCK" ? "purchase.blocked" : "payment.authorized",
+      summary: `${tx.verdict || "APPROVE"}: ${tx.merchant} · $${tx.amount}`,
+      verdict: (tx.verdict || "APPROVE") as any,
       merchant: tx.merchant,
       item: tx.item,
       category: tx.category || "Electronics",
       amount: tx.amount,
-      decision: tx.verdict,
-      rule: tx.reason,
-      ruleCode: tx.ruleId,
-      reasoning: tx.reason,
-      paypalOrderId: tx.paypalOrderId,
+      decision: tx.verdict === "BLOCK" ? "blocked" : tx.status === "completed" ? "approved" : "review",
+      rule: tx.reason || `Rule ${tx.ruleId || "MND-AUTO"}`,
+      ruleCode: tx.ruleId || "MND-AUTO",
+      reasoning: tx.reason || "Evaluated by policy engine",
+      paypalOrderId: tx.paypalOrderId || null,
+      toolCalls: ["policy.evaluate", "paypal.authorize"],
       sha256: `sha256-${(tx.id || "tx").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}...`,
     }));
-    return [...storeRecords, ...auditRecords];
-  }, [storeTransactions]);
+
+    if (serverAudit && Array.isArray(serverAudit) && serverAudit.length > 0) {
+      const existingIds = new Set(storeRecords.map((r) => r.id));
+      const nonDuplicateServer = serverAudit.filter((s: any) => !existingIds.has(s.id));
+      return [...storeRecords, ...nonDuplicateServer];
+    }
+
+    if (storeRecords.length > 0) {
+      return storeRecords;
+    }
+
+    return auditRecords;
+  }, [storeTransactions, serverAudit]);
 
   const merchants = useMemo(() => [...new Set(dynamicAuditRecords.map((row) => row.merchant))], [dynamicAuditRecords]);
   const categories = useMemo(() => [...new Set(dynamicAuditRecords.map((row) => row.category))], [dynamicAuditRecords]);

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -11,8 +12,9 @@ import {
   YAxis,
 } from "recharts";
 import { spendData } from "./mock";
+import { useMandateStore } from "./store";
 
-const categoryData = [
+const defaultCategoryData = [
   { name: "Software", value: 43, color: "var(--chart-safe)" },
   { name: "Office", value: 28, color: "var(--gate)" },
   { name: "Hardware", value: 19, color: "var(--warning)" },
@@ -20,11 +22,30 @@ const categoryData = [
 ];
 
 export function BudgetBurnDownChart() {
-  const data = spendData.map((row, index) => ({
-    ...row,
-    remaining: 4500 - spendData.slice(0, index + 1).reduce((sum, item) => sum + item.approved, 0),
-    control: 4500 - (index + 1) * 430,
-  }));
+  const transactions = useMandateStore((state) => state.transactions) || [];
+  const monthlyCap = useMandateStore((state) => state.monthlyCap) || 5000;
+
+  const data = useMemo(() => {
+    const completed = transactions.filter((tx) => tx.status === "completed");
+    if (completed.length > 0) {
+      let cumulative = 0;
+      return completed.slice(-10).map((tx, idx, arr) => {
+        cumulative += tx.amount;
+        return {
+          day: tx.date ? tx.date.split("·")[0].trim() : `Tx ${idx + 1}`,
+          approved: tx.amount,
+          remaining: Math.max(0, monthlyCap - cumulative),
+          control: Math.max(0, monthlyCap - (idx + 1) * (monthlyCap / (arr.length + 1))),
+        };
+      });
+    }
+
+    return spendData.map((row, index) => ({
+      ...row,
+      remaining: Math.max(0, monthlyCap - spendData.slice(0, index + 1).reduce((sum, item) => sum + item.approved, 0)),
+      control: Math.max(0, monthlyCap - (index + 1) * (monthlyCap / spendData.length)),
+    }));
+  }, [transactions, monthlyCap]);
 
   return (
     <div className="h-72 pt-5" aria-label="Budget burn-down chart">
@@ -82,6 +103,27 @@ export function BudgetBurnDownChart() {
 }
 
 export function CategorySpendChart() {
+  const transactions = useMandateStore((state) => state.transactions) || [];
+
+  const categoryData = useMemo(() => {
+    const completed = transactions.filter((tx) => tx.status === "completed");
+    if (completed.length > 0) {
+      const counts: Record<string, number> = {};
+      completed.forEach((tx) => {
+        const cat = tx.category || "General";
+        counts[cat] = (counts[cat] || 0) + tx.amount;
+      });
+      const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+      const palette = ["var(--chart-safe)", "var(--gate)", "var(--warning)", "var(--paypal)", "var(--muted-foreground)"];
+      return Object.entries(counts).map(([name, val], idx) => ({
+        name,
+        value: Math.round((val / total) * 100),
+        color: palette[idx % palette.length],
+      }));
+    }
+    return defaultCategoryData;
+  }, [transactions]);
+
   return (
     <div className="flex items-center gap-3 pt-4">
       <div className="h-52 min-w-0 flex-1" aria-label="Spend by category chart">
