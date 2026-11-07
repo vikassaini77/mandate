@@ -134,6 +134,24 @@ export function Analytics() {
     ];
   }, [transactions, blocked]);
 
+  const threatNodes = useMemo(() => {
+    const baseNodes = [
+      { id: 'tokyo', cx: 850, cy: 120, label: 'TYO', risk: 'high' },
+      { id: 'moscow', cx: 620, cy: 90, label: 'MOW', risk: 'critical' },
+      { id: 'london', cx: 480, cy: 130, label: 'LHR', risk: 'medium' },
+      { id: 'newyork', cx: 250, cy: 140, label: 'NYC', risk: 'high' },
+      { id: 'saopaulo', cx: 320, cy: 280, label: 'GRU', risk: 'low' },
+      { id: 'singapore', cx: 780, cy: 240, label: 'SIN', risk: 'critical' },
+    ];
+    if (blocked.length === 0) {
+      return baseNodes.map((n) => ({ ...n, risk: 'low' }));
+    }
+    return baseNodes.map((n, i) => ({
+      ...n,
+      risk: i < blocked.length ? (i % 2 === 0 ? 'critical' : 'high') : 'low',
+    }));
+  }, [blocked]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -367,15 +385,7 @@ export function Analytics() {
           </svg>
 
           <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 400" preserveAspectRatio="none">
-            {/* Hardcoded Threat Nodes */}
-            {[
-              { id: 'tokyo', cx: 850, cy: 120, label: 'TYO', risk: 'high' },
-              { id: 'moscow', cx: 620, cy: 90, label: 'MOW', risk: 'critical' },
-              { id: 'london', cx: 480, cy: 130, label: 'LHR', risk: 'medium' },
-              { id: 'newyork', cx: 250, cy: 140, label: 'NYC', risk: 'high' },
-              { id: 'saopaulo', cx: 320, cy: 280, label: 'GRU', risk: 'low' },
-              { id: 'singapore', cx: 780, cy: 240, label: 'SIN', risk: 'critical' },
-            ].map(node => (
+            {threatNodes.map((node) => (
               <g key={node.id}>
                 {/* Connecting trajectories to center (NYC - HQ) */}
                 <path 

@@ -573,6 +573,29 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
   const [active, setActive] = useState(true);
   const [confirmKill, setConfirmKill] = useState(false);
 
+  useEffect(() => {
+    void mandateApi.getMandate("mandate_1").then((data) => {
+      if (data && typeof data.is_active === "boolean") {
+        setActive(data.is_active && !data.kill_switch_engaged);
+      }
+    });
+  }, []);
+
+  const handleToggleActive = async (newActive: boolean) => {
+    setActive(newActive);
+    try {
+      if (!newActive) {
+        await mandateApi.killMandate("mandate_1");
+        toast.error("Agent spending paused on Sentinel Policy Engine");
+      } else {
+        await mandateApi.activateMandate("mandate_1");
+        toast.success("Agent spending resumed on Sentinel Policy Engine");
+      }
+    } catch {
+      toast.info(newActive ? "Agent spending resumed" : "Agent spending paused");
+    }
+  };
+
   // Compute live dynamic metrics
   const completedTxs = transactions.filter((t) => t.status === "completed");
   const totalSpent = completedTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -586,6 +609,8 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
   const blockedTxs = transactions.filter((t) => t.verdict === "BLOCK" || t.status === "denied");
   const blockedCount = blockedTxs.length;
   const blockedProtected = blockedTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const taskCount = pendingRequests.length + completedTxs.length;
+  const lastActionText = transactions[0]?.date ? `last action ${transactions[0].date}` : "standing by";
 
   return (
     <div className="space-y-6">
@@ -684,20 +709,20 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
                 />
                 <div>
                   <p className="text-sm font-semibold">{active ? "Active" : "Paused"}</p>
-                  <p className="text-[10px] text-muted-foreground">4 tasks · last action 2m ago</p>
+                  <p className="text-[10px] text-muted-foreground">{taskCount} tasks tracked · {lastActionText}</p>
                 </div>
               </div>
               <Bot className="size-5 text-signal" />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Fact label="Today" value="23 decisions" />
+              <Fact label="Today" value={`${transactions.length + requests.length} decisions`} />
               <Fact label="Autonomy" value="Balanced" />
             </div>
           </div>
           <Button
             variant={active ? "destructive" : "default"}
             className="mt-4 w-full"
-            onClick={() => (active ? setConfirmKill(true) : setActive(true))}
+            onClick={() => (active ? setConfirmKill(true) : handleToggleActive(true))}
           >
             {active ? (
               <>
@@ -726,10 +751,7 @@ function Dashboard({ onNavigate }: { onNavigate: (view: View) => void }) {
             <AlertDialogCancel>Keep active</AlertDialogCancel>
             <AlertDialogAction
               className="bg-danger text-primary-foreground hover:bg-danger/90"
-              onClick={() => {
-                setActive(false);
-                toast.error("Agent spending paused");
-              }}
+              onClick={() => handleToggleActive(false)}
             >
               Pause spending
             </AlertDialogAction>

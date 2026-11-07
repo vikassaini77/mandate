@@ -9,8 +9,50 @@
     "reason": "Annual billing conflicts with mandate m-1",
     "status": "approved",
     "confidence": 94,
-    "resolved_at": "2026-11-06T18:39:47.391031+00:00",
-    "paypal_order_id": "MOCK-ORDER-F307E927"
+    "resolved_at": "2026-11-07T05:47:40.552845+00:00",
+    "paypal_order_id": "5DF81312TY005822L",
+    "paypal_order": {
+      "id": "5DF81312TY005822L",
+      "status": "PAYER_ACTION_REQUIRED",
+      "amount_cents": 19200,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "5DF81312TY005822L",
+        "intent": "CAPTURE",
+        "status": "PAYER_ACTION_REQUIRED",
+        "payment_source": {
+          "paypal": {}
+        },
+        "purchase_units": [
+          {
+            "reference_id": "approved_req-1",
+            "amount": {
+              "currency_code": "USD",
+              "value": "192.00"
+            },
+            "payee": {
+              "email_address": "sb-d5jio53276440@business.example.com",
+              "merchant_id": "SY5U9N4CD3BVJ",
+              "display_data": {
+                "brand_name": "MANDATE"
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/5DF81312TY005822L",
+            "rel": "self",
+            "method": "GET"
+          },
+          {
+            "href": "https://www.sandbox.paypal.com/checkoutnow?token=5DF81312TY005822L",
+            "rel": "payer-action",
+            "method": "GET"
+          }
+        ]
+      }
+    }
   },
   "req-2": {
     "id": "req-2",
@@ -20,10 +62,8 @@
     "amount_cents": 14900,
     "time": "18 min ago",
     "reason": "Price is within threshold; new merchant requires review",
-    "status": "approved",
-    "confidence": 87,
-    "resolved_at": "2026-11-06T18:00:11.103978+00:00",
-    "paypal_order_id": "MOCK-ORDER-DE07F241"
+    "status": "pending",
+    "confidence": 87
   },
   "req-3": {
     "id": "req-3",
@@ -35,142 +75,5 @@
     "reason": "High-value purchase exceeds $5,000 threshold. Quorum required.",
     "status": "pending",
     "confidence": 60
-  },
-  "appr_78ce4e52": {
-    "id": "appr_78ce4e52",
-    "proposal_id": "prop_87bc8df3",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "approved",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-06T18:26:49.083625+00:00",
-    "resolved_at": "2026-11-06T18:49:11.595519+00:00",
-    "paypal_order_id": "MOCK-ORDER-5071C83C"
-  },
-  "appr_e484fdd5": {
-    "id": "appr_e484fdd5",
-    "proposal_id": "prop_93f4390f",
-    "item": "Enterprise Equipment Order",
-    "amount_cents": 34900,
-    "amount": 349.0,
-    "merchant": "Amazon Business",
-    "category": "Hardware",
-    "status": "approved",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 349.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-06T18:38:55.998244+00:00",
-    "resolved_at": "2026-11-06T18:53:37.775826+00:00",
-    "paypal_order_id": "MOCK-ORDER-13643194"
-  },
-  "appr_8a173e9c": {
-    "id": "appr_8a173e9c",
-    "proposal_id": "prop_eec7f19c",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "blocked",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-06T18:56:53.054740+00:00",
-    "resolved_at": "2026-11-07T03:41:54.661055+00:00"
-  },
-  "appr_c7f8adbd": {
-    "id": "appr_c7f8adbd",
-    "proposal_id": "prop_4dd09853",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "blocked",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-07T03:21:54.159984+00:00",
-    "resolved_at": "2026-11-07T03:41:56.043775+00:00"
-  },
-  "appr_39804b5d": {
-    "id": "appr_39804b5d",
-    "proposal_id": "prop_dbfdf5ec",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "approved",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-07T03:23:45.538660+00:00",
-    "resolved_at": "2026-11-07T03:42:07.129916+00:00",
-    "paypal_order_id": "MOCK-ORDER-07EF338E",
-    "paypal_order": {
-      "id": "MOCK-ORDER-07EF338E",
-      "status": "CREATED",
-      "amount_cents": 25000,
-      "currency": "USD",
-      "provider_raw": {
-        "id": "MOCK-ORDER-07EF338E",
-        "status": "CREATED",
-        "links": [
-          {
-            "href": "http://mock-approve-url",
-            "rel": "approve",
-            "method": "GET"
-          }
-        ]
-      }
-    }
-  },
-  "appr_6c2e3bdc": {
-    "id": "appr_6c2e3bdc",
-    "proposal_id": "prop_e737372f",
-    "item": "Keychron Q1 Pro Mechanical Keyboard",
-    "amount_cents": 21900,
-    "amount": 219.0,
-    "merchant": "Keychron",
-    "category": "Electronics",
-    "status": "pending",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 219.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-07T03:40:59.021167+00:00"
-  },
-  "appr_c0cff80c": {
-    "id": "appr_c0cff80c",
-    "proposal_id": "prop_0b29ba0c",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "pending",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-07T03:57:55.796318+00:00"
-  },
-  "appr_2cf93603": {
-    "id": "appr_2cf93603",
-    "proposal_id": "prop_1ebf2cd1",
-    "item": "AirPods Pro",
-    "amount_cents": 25000,
-    "amount": 250.0,
-    "merchant": "Apple",
-    "category": "Electronics",
-    "status": "pending",
-    "time": "Just now",
-    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
-    "confidence": 75,
-    "timestamp": "2026-11-07T05:31:13.087559+00:00"
   }
 }

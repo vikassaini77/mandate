@@ -1,5 +1,25 @@
 [
   {
+    "id": "req-1",
+    "amount_cents": 19200,
+    "merchant": "Linear",
+    "category": "General",
+    "currency": "USD",
+    "description": "Business workspace \u00b7 12 seats",
+    "verdict": "APPROVE",
+    "rule_id": "MND-HUMAN-APPROVAL",
+    "reason": "Authorized by Manager via Human Approval Center",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-07T05:47:40.411945+00:00",
+    "paypal_order_id": "5DF81312TY005822L",
+    "status": "COMPLETED",
+    "approval_id": "req-1",
+    "paypal_order": {
+      "id": "5DF81312TY005822L"
+    },
+    "resolved_at": "2026-11-07T05:47:40.552845+00:00"
+  },
+  {
     "id": "prop_d5d2583b",
     "amount_cents": 99999999,
     "merchant": "LuxuryYachts",
