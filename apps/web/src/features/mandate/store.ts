@@ -128,6 +128,7 @@ interface MandateState {
   resolveRequest: (id: string, status: Exclude<RequestStatus, "pending">) => void;
   setRequests: (requests: PurchaseRequest[]) => void;
   fetchRequests: () => Promise<void>;
+  fetchTransactions: () => Promise<void>;
   resetRequests: () => Promise<void>;
   toggleMandate: (id: string) => void;
   theme: "Dark" | "Light" | "System";
@@ -210,6 +211,35 @@ export const useMandateStore = create<MandateState>()(
           }
         } catch (e) {
           console.warn("Could not sync approval requests from backend:", e);
+        }
+      },
+      fetchTransactions: async () => {
+        try {
+          const res = await mandateApi.getTransactions();
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const mapped: TransactionRecord[] = res.data.map((tx: any) => ({
+              id: tx.paypal_order_id || tx.id,
+              merchant: tx.merchant || "Authorized Merchant",
+              item: tx.description || `${tx.category || "Item"} Purchase`,
+              amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
+              status: tx.status?.toLowerCase() === "denied" || tx.status?.toLowerCase() === "blocked" ? "denied" : "completed",
+              category: tx.category || "General",
+              verdict: tx.verdict || "APPROVE",
+              ruleId: tx.rule_id || "MND-AUTO",
+              reason: tx.reason,
+              date: tx.timestamp
+                ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "Just now",
+              paypalOrderId: tx.paypal_order_id,
+            }));
+            set((state) => {
+              const backendMap = new Map(mapped.map((m) => [m.id, m]));
+              const keptLocal = (state.transactions || []).filter((t) => !backendMap.has(t.id));
+              return { transactions: [...mapped, ...keptLocal] };
+            });
+          }
+        } catch (e) {
+          console.warn("Could not sync transactions from backend:", e);
         }
       },
       resetRequests: async () => {

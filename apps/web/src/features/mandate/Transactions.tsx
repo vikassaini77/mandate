@@ -117,6 +117,7 @@ const seed: Payment[] = [
 export function Transactions() {
   const requests = useMandateStore((state) => state.requests);
   const storeTransactions = useMandateStore((state) => state.transactions || []);
+  const fetchTransactions = useMandateStore((state) => state.fetchTransactions);
   const [payments, setPayments] = useState(seed);
   const [backendPayments, setBackendPayments] = useState<Payment[]>([]);
   const [refunds, setRefunds] = useState<Record<string, number>>({});
@@ -128,6 +129,7 @@ export function Transactions() {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
+    void fetchTransactions();
     async function loadBackendTransactions() {
       try {
         const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
