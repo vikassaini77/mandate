@@ -120,7 +120,7 @@ async def submit_approval_request(
     """Adds a new purchase request into the persistent human-in-the-loop approval queue."""
     amount = payload.amount if payload.amount is not None else ((payload.amount_cents or 0) / 100.0)
     amount_cents = payload.amount_cents if payload.amount_cents is not None else int(amount * 100)
-    req_id = payload.id or f"appr_{Date.now() if 'Date' in globals() else datetime.now(timezone.utc).strftime('%s')}"
+    req_id = payload.id or f"appr_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
     item = {
         "id": req_id,
         "merchant": payload.merchant,

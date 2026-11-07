@@ -4,8 +4,9 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Query, Response
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -126,7 +127,7 @@ async def trigger_accounting_sync(payload: Optional[Dict[str, Any]] = None) -> D
 
 @router.get('/export')
 async def export_accounting_ledger(
-    format: str = Query("csv", regex="^(csv|json|iif)$"),
+    format: str = Query("csv", pattern="^(csv|json|iif)$"),
     provider: Optional[str] = "QuickBooks Online"
 ):
     """

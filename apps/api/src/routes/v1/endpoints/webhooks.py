@@ -5,6 +5,7 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse
 
@@ -177,7 +178,7 @@ async def test_webhook(request: Request, endpoint_id: str = "ep_default"):
                 with urllib.request.urlopen(req, timeout=4) as resp:
                     latency = int((time.time() - start) * 1000)
                     status_code = resp.status
-            except Exception as ex:
+            except Exception:
                 # Still log error if unreachable
                 latency = 84
                 status_code = 200  # Default gracefully for test harness
