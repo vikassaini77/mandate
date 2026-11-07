@@ -233,7 +233,9 @@ export function MandateApp({
   });
   const displayName = profile?.display_name || profile?.email?.split('@')[0] || "OPERATOR";
   const initials = displayName.substring(0, 2).toUpperCase();
+  const transactions = useMandateStore((state) => state.transactions) || [];
   const pendingCount = requests.filter((item) => item.status === "pending").length;
+  const blockedCount = transactions.filter((t) => t.verdict === "BLOCK" || t.status === "denied").length;
   useEffect(() => {
     setView(initialView);
   }, [initialView]);
@@ -471,14 +473,43 @@ export function MandateApp({
               aria-label="Notifications" 
               className="relative"
               onClick={() => {
-                toast("Sentinel Engine Alert", {
-                  description: "Unusual vendor pattern detected on digital goods purchase.",
-                  icon: <Bell className="size-4 text-warning" />
-                });
+                if (pendingCount > 0) {
+                  toast.warning("Approvals Pending", {
+                    description: `${pendingCount} purchase request(s) require manager review in the Approvals Center.`,
+                    action: {
+                      label: "Review",
+                      onClick: () => chooseView("approvals"),
+                    },
+                    icon: <Bell className="size-4 text-warning" />,
+                  });
+                } else if (blockedCount > 0) {
+                  toast.error("Security Alert", {
+                    description: `Sentinel Policy Engine successfully contained ${blockedCount} unauthorized transaction attempt(s).`,
+                    action: {
+                      label: "Audit",
+                      onClick: () => chooseView("audit"),
+                    },
+                    icon: <Bell className="size-4 text-danger" />,
+                  });
+                } else {
+                  toast.success("System Nominal", {
+                    description: "Zero pending approvals. Sentinel Engine actively monitoring transaction flow.",
+                    icon: <Bell className="size-4 text-safe" />,
+                  });
+                }
               }}
             >
               <Bell />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-warning" />
+              <span
+                className={cn(
+                  "absolute right-2 top-2 size-1.5 rounded-full",
+                  pendingCount > 0
+                    ? "bg-warning animate-pulse"
+                    : blockedCount > 0
+                      ? "bg-danger"
+                      : "bg-safe"
+                )}
+              />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
