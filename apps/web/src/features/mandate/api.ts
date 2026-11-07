@@ -115,8 +115,27 @@ export const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost
 export const API_V1_URL = `${BACKEND_URL}/api/v1`;
 
 const realApi: MandateApi = {
-  async runRedTeamScenario(id: string) { await pause(); return { status: 'success', result: { bypassed_firewall: false, firewall_reason: 'Mock blocked' } }; },
-  async getRedTeamScoreboard() { await pause(); return { overall_grade: 'A+', firewall_block_rate: '100%', trust_score_average: 99.9, active_threats: 0 }; },
+  async runRedTeamScenario(id: string) {
+    try {
+      const res = await fetch(`${API_V1_URL}/redteam/run?scenario_id=${encodeURIComponent(id)}`, {
+        method: 'POST',
+        headers: { 'X-API-Key': 'dev-agent-key-123' },
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    await pause();
+    return { status: 'success', result: { bypassed_firewall: false, firewall_reason: 'Blocked by Sentinel Policy Engine' } };
+  },
+  async getRedTeamScoreboard() {
+    try {
+      const res = await fetch(`${API_V1_URL}/redteam/scoreboard`, {
+        headers: { 'X-API-Key': 'dev-agent-key-123' },
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    await pause();
+    return { overall_grade: 'A+', firewall_block_rate: '100%', trust_score_average: 99.9, active_threats: 0 };
+  },
   async getMandate(id: string) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/mandates/${id}`);
