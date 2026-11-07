@@ -21,10 +21,12 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
       - name: Code Quality & Linting
         run: |
-          uv run --project apps/api ruff check apps/api/src/ packages/ tests/ scripts/
+          uv run --project apps/api --extra dev ruff check apps/api/src/ packages/ tests/ scripts/
 
       - name: Run Deterministic Policy Invariant Suite
         run: |
