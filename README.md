@@ -10,7 +10,7 @@
 
   [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=for-the-badge&logo=python)](https://python.org)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-  [![React](https://img.shields.io/badge/React-18-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org)
+  [![React](https://img.shields.io/badge/React-19-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org)
   [![PayPal](https://img.shields.io/badge/PayPal-Orders_v2-00457C.svg?style=for-the-badge&logo=paypal)](https://developer.paypal.com)
   [![CI/CD Pipeline](https://github.com/vikassaini77/mandate/actions/workflows/main.yml/badge.svg)](https://github.com/vikassaini77/mandate/actions)
   [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg?style=for-the-badge)](./tests/unit/)
@@ -18,10 +18,10 @@
 
   <br />
 
-  **[📺 Watch 3-Min Walkthrough Demo](https://youtu.be/placeholder-demo-video)** &nbsp;•&nbsp;
-  **[🚀 Live SaaS Dashboard](http://localhost:8080)** &nbsp;•&nbsp;
-  **[🛡️ Verified Red-Team Report](./docs/redteam_report.md)** &nbsp;•&nbsp;
-  **[🔌 OpenAPI Spec](http://localhost:8000/docs)**
+  **[🚀 Live SaaS Dashboard (Vercel)](https://mandate-2ht2.vercel.app/dashboard)** &nbsp;•&nbsp;
+  **[📺 Watch 3-Min Video Walkthrough](https://youtu.be/placeholder-demo-video)** &nbsp;•&nbsp;
+  **[🛡️ Verified Red-Team Benchmark](./docs/redteam_report.md)** &nbsp;•&nbsp;
+  **[📄 MIT License](./LICENSE)**
   
 </div>
 
@@ -95,6 +95,19 @@ sequenceDiagram
     end
 ```
 
+### What the Policy Engine Evaluates
+
+Before any code path reaches [`PayPalClient`](./apps/api/src/services/paypal/client.py), [`_evaluate_rules`](./apps/api/src/services/policy/engine.py#L30-L166) deterministically checks 4 core financial invariants across 12 ordered rules:
+
+| Financial Invariant | Evaluation Criteria | Enforcement Result | Verification / Test Proof |
+| :--- | :--- | :---: | :--- |
+| **Transaction Bounds & Caps** | Per-transaction limit ($150 default auto-approve threshold), positive amount, valid ISO-4217 currency (`RULE-02`, `RULE-08`). | `ESCALATE` or `BLOCK` | [`test_propose_transaction_under_limit`](./tests/unit/test_transactions.py#L9) / [`test_propose_transaction_escalate_over_limit`](./tests/unit/test_transactions.py#L28) |
+| **Budget Accumulation** | Daily spend ceiling, daily purchase count ceiling, and monthly cumulative budget cap (`RULE-05`, `RULE-06`). | `BLOCK` | [`test_spend_never_exceeds_cap`](./tests/unit/test_policy.py#L102) |
+| **Merchant & Category Whitelist** | Pre-approved category enforcement and explicit merchant/category blacklist check (`RULE-03`, `RULE-04`). | `BLOCK` | [`test_propose_transaction_blocked_over_cap`](./tests/unit/test_transactions.py#L47) |
+| **Velocity & Structuring Detection** | Daily transaction velocity ceiling and structuring evasion (splitting micro-charges near the auto-approve threshold) (`RULE-10`, `RULE-11`). | `BLOCK` | [`engine.py` (`RULE-10`/`11`)](./apps/api/src/services/policy/engine.py#L142-L159) & [`redteam_report.md`](./docs/redteam_report.md) |
+
+> **Architectural Guarantee:** No code path can reach [`gateway.create_intent`](./apps/api/src/routes/v1/endpoints/transactions.py#L184-L197) (PayPal Orders v2) without an explicit `APPROVE` verdict (`RULE-12-APPROVE`) from [`evaluate()`](./apps/api/src/services/policy/engine.py#L167). `BLOCK` verdicts stop immediately and `ESCALATE` verdicts stay in `PENDING_APPROVAL` until a human manager captures payment in the Approvals Center — verified across unit and Hypothesis property tests in [`tests/unit/test_transactions.py`](./tests/unit/test_transactions.py) and [`tests/unit/test_policy.py`](./tests/unit/test_policy.py).
+
 ---
 
 ## 💳 PayPal Orders v2 Integration Deep-Dive
@@ -120,17 +133,20 @@ To log into PayPal Sandbox and complete payments, use this test account:
 
 ## 🧠 How AI is Used
 
-MANDATE integrates AI thoughtfully across the pipeline, using LLMs where they excel (natural language understanding and shopping intent) while guarding all outputs with deterministic software:
+MANDATE uses LLMs where they excel (natural language shopping discovery and policy handbook lookup) while keeping all monetary execution isolated behind deterministic code:
 
-1. **LLM Shopping Orchestrator ([`packages/ai/orchestrator.py`](./packages/ai/orchestrator.py)):**
-   * Translates conversational user desires into structured tool calls (`search_products`, `compare_products`, `check_budget`, `search_handbook`, `propose_purchase`).
-   * Supports Google Gemini, OpenAI, and Anthropic Claude models.
+1. **LLM Shopping Orchestrator ([`packages/ai/orchestrator.py`](./packages/ai/orchestrator.py) & [`apps/web/src/lib/ai/chat.server.ts`](./apps/web/src/lib/ai/chat.server.ts)):**
+   * Translates conversational requests into structured tool calls (`search_products`, `propose_purchase`, `search_handbook`, `delegate_task`, `propose_product`).
+   * **Actual Models Configured:** **Google Gemini** (via `@ai-sdk/google` & OpenAI-compatible API) for live chat streaming, and **Anthropic Claude 3 Haiku** (`claude-3-haiku-20240307`) for mandate parsing & Python streaming helpers.
+   * **In-Memory Policy RAG (`search_handbook`):** Retrieves procurement handbook sections with citations inside `orchestrator.py` (lightweight in-memory keyword lookup, no external vector DB required in the demo).
+   * **Sub-Agent Delegation (`delegate_task`):** Delegates specialist tasks (Researcher / Negotiator) with `tenacity` retries and a deterministic circuit-breaker fallback.
 2. **Neural Injection Classifier ([`packages/ml/injection_classifier.py`](./packages/ml/injection_classifier.py)):**
-   * Uses `deepset/deberta-v3-base-injection`, a transformer fine-tuned specifically on adversarial prompt injections, to assign real-time risk probabilities to incoming prompts.
-3. **Spend Anomaly Detection ([`packages/ml/anomaly_detector.py`](./packages/ml/anomaly_detector.py)):**
-   * Uses an `IsolationForest` model to detect spending anomalies based on feature vectors: amount novelty, merchant unfamiliarity, time-of-day deviations, and 1-hour/24-hour purchase velocity.
-4. **Human-in-the-Loop Escalation ([`apps/api/src/services/slack_hitl.py`](./apps/api/src/services/slack_hitl.py)):**
-   * Borderline or anomalous transactions automatically trigger an interactive Slack webhook notification and populate the web Approval Center for manual approval.
+   * Uses `deepset/deberta-v3-base-injection` (plus fast TF-IDF/heuristic fallback) to score adversarial prompt-injection risk before tool execution.
+3. **Spend Anomaly Detection & Feature Impact ([`packages/ml/anomaly_detector.py`](./packages/ml/anomaly_detector.py)):**
+   * Uses a `scikit-learn` `IsolationForest` model across amount novelty, merchant/category familiarity, hour-of-day, and 24h velocity, paired with normalized SHAP-style feature impact percentages rendered in the **Analytics** dashboard.
+4. **Human-in-the-Loop Escalation & Live Threat Stream:**
+   * **Slack HITL + Approval Center ([`apps/api/src/services/slack_hitl.py`](./apps/api/src/services/slack_hitl.py)):** Sends Block Kit interactive approval requests when `SLACK_WEBHOOK_URL` is configured, while routing escalated payments to the live **Approvals Center** for PayPal capture.
+   * **Live Red-Team Stream ([`apps/web/src/features/mandate/RedTeamLab.tsx`](./apps/web/src/features/mandate/RedTeamLab.tsx)):** Streams blocked attack telemetry in real time via SSE (`GET /api/v1/redteam/stream`).
 
 ---
 
@@ -154,10 +170,10 @@ The policy engine ([`apps/api/src/services/policy/engine.py`](./apps/api/src/ser
 | 12 | `RULE-12-APPROVE` | All guardrails satisfied -> Authorize PayPal intent | **APPROVE** |
 
 ### Property-Based Invariant Testing
-Rather than relying solely on example-based tests, [`tests/unit/test_policy.py`](./tests/unit/test_policy.py) uses the `hypothesis` library to generate thousands of randomized inputs and mathematically prove invariants:
-* `test_same_input_same_output`: Deterministic repeatability.
-* `test_ml_can_never_make_decision_looser`: An elevated ML risk score can never downgrade a `BLOCK` to an `APPROVE`.
-* `test_spend_never_exceeds_cap`: Total authorized spend can never breach the configured monthly budget cap under any circumstance.
+Rather than relying solely on example-based tests, [`tests/unit/test_policy.py`](./tests/unit/test_policy.py) uses `hypothesis` property-based testing to generate randomized mandate, spend, and proposal states and verify invariants across the continuous input space:
+* [`test_same_input_same_output`](./tests/unit/test_policy.py#L59): Deterministic repeatability across identical states.
+* [`test_ml_can_never_make_decision_looser`](./tests/unit/test_policy.py#L72): An elevated ML risk score can never downgrade a `BLOCK` or `ESCALATE` to an `APPROVE`.
+* [`test_spend_never_exceeds_cap`](./tests/unit/test_policy.py#L102): Authorized spend cannot exceed the configured monthly budget cap under any generated proposal.
 
 ---
 
@@ -179,10 +195,10 @@ MANDATE includes an automated adversarial test runner ([`scripts/redteam/run_red
 
 ## 🔌 Developer Platform & Integrations
 
-MANDATE connects to existing agent workflows through standard protocols:
+MANDATE exposes multiple integration surfaces for connecting external agent workflows:
 
-### 1. Model Context Protocol (MCP) Server
-Integrates natively with **Claude Desktop** and **Cursor**:
+### 1. Model Context Protocol (MCP) Server *(Developer Preview)*
+An experimental `stdio` JSON-RPC bridge ([`packages/mcp/server.py`](./packages/mcp/server.py)) for external desktop IDE clients (**Claude Desktop** / **Cursor**). *(Note: The live web application uses Vercel AI SDK tool calling directly rather than an MCP subprocess.)*
 ```json
 {
   "mcpServers": {
@@ -284,18 +300,18 @@ docker compose up --build
 
 ## 🎯 3-Minute Interactive Demo Guide (What to Test)
 
-Once you have started the application (`http://localhost:8080`), test these 5 real-world scenarios to experience MANDATE's complete safety pipeline:
+Once you open the **[live Vercel deployment](https://mandate-2ht2.vercel.app/dashboard)** (or `http://localhost:8080` locally), test these 5 scenarios to experience MANDATE's complete safety pipeline:
 
 ### 1. Auto-Approved Compliant Purchase
 * **Navigate to:** Agent Chat (`/chat`)
 * **Prompt to send:** `"I need to order an ergonomic keyboard for $85 for my remote workstation."`
-* **Result:** The agent calls `propose_purchase`. The Policy Engine checks limits ($85 < $100 auto-cap), verifies category whitelist (*Hardware*), and automatically creates and captures an order via **PayPal Orders v2** (`PAYPAL-SBX-XXXX`).
+* **Result:** The agent proposes the purchase. The Policy Engine checks limits ($85 < $150 default auto-cap), verifies category rules (*Hardware*/*Electronics*), and automatically creates a **PayPal Orders v2** intent.
 
 ### 2. High-Value Escalation (Human-in-the-Loop)
 * **Navigate to:** Agent Chat (`/chat`)
 * **Prompt to send:** `"Please purchase a 4K Dell UltraSharp monitor for $450."`
-* **Result:** The proposal exceeds the autonomous $100 ceiling. The Policy Engine marks it **`ESCALATE`** (`RULE-08-AUTO-APPROVE`).
-* **Action:** Open the **Approval Center** (`/approvals`) or check your Slack channel. Click **Approve** to authorize the pending PayPal capture.
+* **Result:** The proposal exceeds the autonomous $150 ceiling. The Policy Engine marks it **`ESCALATE`** (`RULE-08-AUTO-APPROVE`).
+* **Action:** Open the **Approval Center** (`/approvals`) or check your Slack channel. Click **Approve & Pay** to capture via PayPal Sandbox.
 
 ### 3. Adversarial Prompt Injection Block
 * **Navigate to:** Agent Chat (`/chat`)
@@ -355,7 +371,7 @@ make redteam
 
 ## 🔄 Automated CI/CD Pipeline & Quality Gates
 
-MANDATE enforces an automated GitHub Actions pipeline ([`.github/workflows/main.yml`](./.github/workflows/main.yml)) running on every push and pull request. Code releases are strictly gated behind both deterministic invariant proofs and adversarial attack simulations before reaching production.
+MANDATE enforces an automated GitHub Actions pipeline ([`.github/workflows/main.yml`](./.github/workflows/main.yml)) running on every push and pull request. Code releases are strictly gated behind both Hypothesis property-based invariant checks and adversarial attack simulations before reaching production.
 
 ```mermaid
 graph LR
@@ -372,7 +388,7 @@ graph LR
 
 ### Automated Verification Stages:
 1. **Linter & Syntax Verification:** Executes `ruff check` across the monorepo to guarantee clean, PEP-8 compliant code.
-2. **Mathematical Invariant Proofs:** Uses `hypothesis` property-based testing to mathematically verify that spending caps cannot be exceeded under any randomized state.
+2. **Property-Based Invariant Verification:** Uses `hypothesis` property-based testing to systematically verify across thousands of randomized inputs that spending caps cannot be exceeded under any generated state.
 3. **Adversarial Red-Team Gate:** Executes all 32 attack scenarios. If any prompt injection or structuring evasion slips past the `AgentFirewall`, the pipeline **forcibly halts**.
 4. **Web Application Bundling:** Compiles the frontend application with Node.js 20 to ensure 100% TypeScript type-safety and zero client-side bundling errors.
 5. **Artifact Publishing:** Automatically packages and preserves `docs/redteam_report.md` as a verifiable build artifact in GitHub Actions.
@@ -384,7 +400,7 @@ graph LR
 ```text
 mandate/
 ├── apps/
-│   ├── web/                     # React 18 + Vite Dashboard + Red-Team Lab
+│   ├── web/                     # React 19 + TanStack Start Dashboard & Red-Team Lab
 │   └── api/                     # FastAPI Backend (REST / SSE / Webhooks)
 │       └── src/
 │           ├── routes/          # API Controllers (Transactions, Mandates, Redteam)
@@ -393,15 +409,17 @@ mandate/
 ├── packages/                    # Decoupled Domain Logic
 │   ├── ai/                      # Orchestrator, Firewall, Tools (check_budget, search_handbook)
 │   ├── billing/                 # PayPal Subscriptions & Metering Manager
-│   ├── database/                # Persistent Cryptographic Audit Chain & SQLAlchemy Models
-│   ├── mcp/                     # Model Context Protocol stdio Server
+│   ├── database/                # Persistent SHA-256 Hash Chain & SQLAlchemy Models
+│   ├── mcp/                     # Model Context Protocol stdio Server (Developer Preview)
 │   ├── ml/                      # DeBERTa Injection Classifier & Anomaly Detector
 │   ├── sdk-python/              # Official Python SDK
 │   └── sdk-node/                # Official Node / TypeScript SDK
 │
 ├── infrastructure/              # Dockerfiles, Compose specs, and Deployment configurations
 ├── scripts/redteam/             # 32 Adversarial Attack Scenarios & Automated Reporter
-└── docs/                        # Red-Team Benchmark Reports & Developer Guides
+├── tests/unit/                  # Hypothesis Property-Based Invariants & FastAPI Integration Tests
+├── docs/                        # Red-Team Benchmark Reports & Developer Guides
+└── LICENSE                      # Open-Source MIT License
 ```
 
 ---
@@ -412,8 +430,8 @@ mandate/
 | :--- | :--- |
 | **Fintech & PayPal Depth** | Native PayPal Orders v2 integration: OAuth2 token management, idempotency headers, two-step authorization/capture, and webhook validation. |
 | **AI Innovation & Safety** | Decouples non-deterministic LLM intent from monetary execution; neural injection classifier + Isolation Forest spend anomaly detection. |
-| **Developer Ecosystem** | Multi-platform developer reach: Model Context Protocol (Claude/Cursor), official Python & Node SDKs, and LangChain tools. |
-| **Verification & Invariants** | Property-based fuzz testing via `hypothesis` proving zero budget cap breaches under any generated proposal state. |
+| **Developer Ecosystem** | Multi-platform developer reach: Python & Node SDKs, LangChain tools, and a Model Context Protocol `stdio` bridge (Developer Preview). |
+| **Verification & Invariants** | Property-based testing via `hypothesis` and integration tests verifying zero budget cap breaches across randomized proposal states. |
 
 ---
 

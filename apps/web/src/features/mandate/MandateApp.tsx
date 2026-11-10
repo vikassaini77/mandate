@@ -405,7 +405,7 @@ export function MandateApp({
                   </div>
                 </div>
                 <p className="mt-2 font-mono text-[9px] leading-4 text-sidebar-muted">
-                  FAANG-GRADE ML SANITIZER: ACTIVE
+                  ML INJECTION FIREWALL: ACTIVE (DeBERTa-v3)
                   <br />
                   ZERO-TRUST CSP: ENFORCED
                   <br />
