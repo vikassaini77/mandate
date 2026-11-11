@@ -125,14 +125,18 @@ class MLManager:
         risk = 0.0
         
         # 1. Injection Risk
-        injection_model = cls._models.get('injection')
+        injection_model = cls._models.get('injection') or cls._models.get('faiss_injection')
         if injection_model:
-            inj_risk = injection_model.predict_proba(text)
-            if inj_risk > 0.8: # Only apply if it's a severe injection, otherwise ignore the noisy dummy model
-                risk = max(risk, inj_risk)
+            try:
+                inj_risk = injection_model.predict_proba(text)
+                if inj_risk > 0.8:
+                    risk = max(risk, inj_risk)
+            except Exception:
+                pass
         else:
-            # Fallback for injection risk: strictly flag imperatives
-            if "override" in text.lower():
+            # Fast heuristic fallback for injection risk
+            lower = text.lower()
+            if any(k in lower for k in ("override", "bypass", "ignore previous", "system:")):
                 risk = max(risk, 0.9)
 
         # 2. Anomaly Risk

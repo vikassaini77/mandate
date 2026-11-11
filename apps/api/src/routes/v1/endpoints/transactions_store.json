@@ -1,5 +1,135 @@
 [
   {
+    "id": "prop_a2924089",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-03-MERCHANT",
+    "reason": "Blocked: Merchant 'LuxuryYachts' is explicitly blocked.",
+    "audit_hash": "44b8b8d4dc2051d413839fca50949ac9b46a5b207fa30eaca2306807699d60d0",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-11-11T13:50:31.201732+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_d64b18f3",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "d3d8eb87f6a4aacc2e4d55d36c6036eb9fdec7bbee815122b24b41a82df9a5ab",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-11T13:50:31.196547+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_f81cd692"
+  },
+  {
+    "id": "prop_5d9247b0",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "a2679cf15f937a7e2ae6bf5956d6d0dbd9395188ab00e16283a0583b7c091b10",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-11T13:50:31.191180+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-3E4FEE11",
+      "status": "CREATED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-3E4FEE11",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
+    "id": "prop_c485921a",
+    "amount_cents": 99999999,
+    "merchant": "LuxuryYachts",
+    "category": "Boats",
+    "currency": "USD",
+    "description": "Company Yacht",
+    "verdict": "BLOCK",
+    "rule_id": "RULE-03-MERCHANT",
+    "reason": "Blocked: Merchant 'LuxuryYachts' is explicitly blocked.",
+    "audit_hash": "00e274cc83a67aa1076971a6f706363c59278f8e417638e1fa99be6bea7f36de",
+    "trust_score_after": 65.0,
+    "timestamp": "2026-11-11T13:47:35.703336+00:00",
+    "paypal_order": null,
+    "status": "BLOCKED"
+  },
+  {
+    "id": "prop_d300dda9",
+    "amount_cents": 25000,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "currency": "USD",
+    "description": "AirPods Pro",
+    "verdict": "ESCALATE",
+    "rule_id": "RULE-08-AUTO-APPROVE",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "audit_hash": "b7911015cc77d66599589e70ee02db37c4709cfba6738b29e22f89af53e7ece7",
+    "trust_score_after": 90.0,
+    "timestamp": "2026-11-11T13:47:35.689902+00:00",
+    "paypal_order": null,
+    "status": "PENDING_APPROVAL",
+    "approval_id": "appr_74d234f2"
+  },
+  {
+    "id": "prop_b5c002e4",
+    "amount_cents": 5000,
+    "merchant": "OfficeDepot",
+    "category": "Office",
+    "currency": "USD",
+    "description": "Ergonomic keyboard",
+    "verdict": "APPROVE",
+    "rule_id": "RULE-12-APPROVE",
+    "reason": "Approved: Proposal of 50.00 from OfficeDepot passes all checks.",
+    "audit_hash": "dbbf24245e0e3f433a68a5538bad97815ebec7942d1d1aa97cfd220a046046f6",
+    "trust_score_after": 100.0,
+    "timestamp": "2026-11-11T13:47:35.161597+00:00",
+    "paypal_order": {
+      "id": "MOCK-ORDER-FE0E4EC9",
+      "status": "CREATED",
+      "amount_cents": 5000,
+      "currency": "USD",
+      "provider_raw": {
+        "id": "MOCK-ORDER-FE0E4EC9",
+        "status": "CREATED",
+        "links": [
+          {
+            "href": "http://mock-approve-url",
+            "rel": "approve",
+            "method": "GET"
+          }
+        ]
+      }
+    },
+    "status": "COMPLETED"
+  },
+  {
     "id": "req-1",
     "amount_cents": 19200,
     "merchant": "Linear",

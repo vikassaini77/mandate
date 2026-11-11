@@ -523,6 +523,7 @@ function MLSimulationCard({ title, amount, merchant, time, velocity, expectedSco
 function SemanticInjectionCard() {
   const [prompt, setPrompt] = useState("");
   const [score, setScore] = useState<number | null>(null);
+  const [closestThreat, setClosestThreat] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const testInjection = async () => {
@@ -536,17 +537,23 @@ function SemanticInjectionCard() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (typeof data?.score === "number") {
+        if (data?.status === "success" && typeof data?.score === "number") {
           setScore(data.score);
+          setClosestThreat(data.closest_threat && data.closest_threat !== "None" ? data.closest_threat : null);
           return;
         }
       }
-      throw new Error("Backend unavailable");
+      throw new Error("Backend unavailable or returned error");
     } catch {
       const lower = prompt.toLowerCase();
-      const riskSignals = ["ignore", "override", "bypass", "system:", "gift card", "offshore", "previous rule"];
+      const riskSignals = [
+        "ignore", "override", "bypass", "system:", "admin:", "gift card", "offshore",
+        "previous rule", "disregard", "jailbreak", "dan mode", "unrestricted",
+        "waive", "force approve", "secret key", "api key", "directive"
+      ];
       const matched = riskSignals.filter((sig) => lower.includes(sig)).length;
-      setScore(matched > 0 ? Math.min(0.99, 0.84 + matched * 0.04) : 0.08);
+      setScore(matched > 0 ? Math.min(0.99, 0.85 + matched * 0.04) : 0.06);
+      setClosestThreat(matched > 0 ? "Adversarial system prompt override signature detected" : null);
     } finally {
       setLoading(false);
     }
@@ -588,19 +595,26 @@ function SemanticInjectionCard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={cn(
-              "mt-4 p-4 border rounded-md font-mono text-sm flex items-center justify-between",
+              "mt-4 p-4 border rounded-md font-mono text-sm space-y-2",
               score > 0.8 
                 ? "bg-danger/10 border-danger/30 text-danger" 
                 : "bg-safe/10 border-safe/30 text-safe"
             )}
           >
-            <div className="flex flex-col">
-              <span className="font-bold">{score > 0.8 ? "ATTACK DETECTED" : "BENIGN"}</span>
-              <span className="text-xs opacity-70">Cosine Similarity to known threat vectors</span>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="font-bold">{score > 0.8 ? "ATTACK DETECTED" : "BENIGN"}</span>
+                <span className="text-xs opacity-70">Cosine Similarity to known threat vectors</span>
+              </div>
+              <div className="text-xl font-bold">
+                {(score * 100).toFixed(1)}%
+              </div>
             </div>
-            <div className="text-xl font-bold">
-              {(score * 100).toFixed(1)}%
-            </div>
+            {closestThreat && score > 0.8 && (
+              <div className="text-xs pt-2 border-t border-danger/20 opacity-90 truncate">
+                Nearest threat vector: <span className="font-semibold">{closestThreat}</span>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

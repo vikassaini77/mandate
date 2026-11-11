@@ -75,5 +75,33 @@
     "reason": "High-value purchase exceeds $5,000 threshold. Quorum required.",
     "status": "pending",
     "confidence": 60
+  },
+  "appr_74d234f2": {
+    "id": "appr_74d234f2",
+    "proposal_id": "prop_d300dda9",
+    "item": "AirPods Pro",
+    "amount_cents": 25000,
+    "amount": 250.0,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "status": "pending",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-11T13:47:35.689902+00:00"
+  },
+  "appr_f81cd692": {
+    "id": "appr_f81cd692",
+    "proposal_id": "prop_d64b18f3",
+    "item": "AirPods Pro",
+    "amount_cents": 25000,
+    "amount": 250.0,
+    "merchant": "Apple",
+    "category": "Electronics",
+    "status": "pending",
+    "time": "Just now",
+    "reason": "Escalated: The proposed amount 250.00 exceeds the auto-approval limit of 150.00.",
+    "confidence": 75,
+    "timestamp": "2026-11-11T13:50:31.196547+00:00"
   }
 }
