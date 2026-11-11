@@ -124,6 +124,7 @@ interface MandateState {
   addTransaction: (tx: Partial<TransactionRecord> & { id: string; merchant: string; item: string; amount: number }) => void;
   completeTransaction: (id: string, paypalOrderId?: string) => void;
   markRequestPaid: (id: string, paypalOrderId?: string) => void;
+  dismissTransaction: (id: string) => void;
   localAI: boolean;
   setLocalAI: (enabled: boolean) => void;
   addMandate: (text: string, limit: number) => void;
@@ -229,9 +230,13 @@ export const useMandateStore = create<MandateState>()(
               resolved_at: r.resolved_at,
               payment_completed: r.payment_completed === true,
             }));
+            const isMockId = (val?: string | null) =>
+              Boolean(val && (val.startsWith("MOCK-") || val.startsWith("PAYPAL-SBX-")));
             set((state) => {
               const backendMap = new Map(mapped.map((m) => [m.id, m]));
-              const localOnly = (state.requests || []).filter((r) => !backendMap.has(r.id));
+              const localOnly = (state.requests || []).filter(
+                (r) => !backendMap.has(r.id) && !isMockId(r.paypal_order_id) && !isMockId(r.id),
+              );
               return { requests: [...localOnly, ...mapped] };
             });
           }
@@ -243,7 +248,11 @@ export const useMandateStore = create<MandateState>()(
         try {
           const res = await mandateApi.getTransactions();
           if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const rawBackendIds = new Set<string>();
             const mapped: TransactionRecord[] = res.data.map((tx: any) => {
+              if (tx.id) rawBackendIds.add(String(tx.id));
+              if (tx.paypal_order_id) rawBackendIds.add(String(tx.paypal_order_id));
+              if (tx.approval_id) rawBackendIds.add(String(tx.approval_id));
               const paymentStatus = (tx.payment_status || "").toLowerCase();
               const st = (tx.status || "").toLowerCase();
               const isRefunded = paymentStatus === "refunded" || st === "refunded";
@@ -283,9 +292,16 @@ export const useMandateStore = create<MandateState>()(
                 paypalOrderId: tx.paypal_order_id,
               };
             });
+            const isMockId = (val?: string | null) =>
+              Boolean(val && (val.startsWith("MOCK-") || val.startsWith("PAYPAL-SBX-")));
             set((state) => {
-              const backendMap = new Map(mapped.map((m) => [m.id, m]));
-              const keptLocal = (state.transactions || []).filter((t) => !backendMap.has(t.id));
+              const keptLocal = (state.transactions || []).filter(
+                (t) =>
+                  !rawBackendIds.has(t.id) &&
+                  !(t.paypalOrderId && rawBackendIds.has(t.paypalOrderId)) &&
+                  !isMockId(t.id) &&
+                  !isMockId(t.paypalOrderId),
+              );
               return { transactions: [...mapped, ...keptLocal] };
             });
           }
@@ -349,6 +365,15 @@ export const useMandateStore = create<MandateState>()(
               : tx,
           ),
         })),
+      dismissTransaction: (id) =>
+        set((state) => ({
+          transactions: (state.transactions || []).filter(
+            (tx) => tx.id !== id && tx.paypalOrderId !== id,
+          ),
+          requests: (state.requests || []).filter(
+            (req) => req.id !== id && req.paypal_order_id !== id,
+          ),
+        })),
       addMandate: (text, limit) =>
         set((state) => ({
           mandates: [
@@ -399,26 +424,32 @@ export const useMandateStore = create<MandateState>()(
       }),
       merge: (persistedState, currentState) => {
         const persisted = (persistedState as any) || {};
+        const isMockId = (val?: string | null) =>
+          Boolean(val && (val.startsWith("MOCK-") || val.startsWith("PAYPAL-SBX-")));
         const sanitizedRequests = Array.isArray(persisted.requests)
-          ? persisted.requests.map((r: any) => {
-              if (r.id === "req-1" && r.payment_completed === undefined) {
-                return { ...r, payment_completed: false };
-              }
-              return r;
-            })
+          ? persisted.requests
+              .filter((r: any) => !isMockId(r?.paypal_order_id) && !isMockId(r?.id))
+              .map((r: any) => {
+                if (r.id === "req-1" && r.payment_completed === undefined) {
+                  return { ...r, payment_completed: false };
+                }
+                return r;
+              })
           : currentState.requests || defaultRequests;
 
         const sanitizedTransactions = Array.isArray(persisted.transactions)
-          ? persisted.transactions.map((t: any) => {
-              // If an order for Linear was approved but not paid, make sure it is pending
-              if (t.merchant === "Linear" && t.amount === 192 && (!t.ruleId || t.ruleId === "MND-HITL-001" || t.ruleId === "MND-HUMAN-APPROVAL")) {
-                const req1 = sanitizedRequests.find((r: any) => r.id === "req-1");
-                if (!req1?.payment_completed) {
-                  return { ...t, status: "pending", verdict: "PENDING_PAYMENT" };
+          ? persisted.transactions
+              .filter((t: any) => !isMockId(t?.paypalOrderId) && !isMockId(t?.id))
+              .map((t: any) => {
+                // If an order for Linear was approved but not paid, make sure it is pending
+                if (t.merchant === "Linear" && t.amount === 192 && (!t.ruleId || t.ruleId === "MND-HITL-001" || t.ruleId === "MND-HUMAN-APPROVAL")) {
+                  const req1 = sanitizedRequests.find((r: any) => r.id === "req-1");
+                  if (!req1?.payment_completed) {
+                    return { ...t, status: "pending", verdict: "PENDING_PAYMENT" };
+                  }
                 }
-              }
-              return t;
-            })
+                return t;
+              })
           : currentState.transactions || defaultTransactions;
 
         return {

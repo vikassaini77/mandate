@@ -227,49 +227,39 @@ export function Transactions() {
     }));
   }, [storeTransactions]);
 
+  const isMockOrder = (orderId: string) =>
+    orderId.startsWith("MOCK-") || orderId.startsWith("PAYPAL-SBX-");
+
   const allPayments = useMemo(() => {
     const map = new Map<string, Payment>();
-    // 1. Approved items from the approval store (reactive & instant)
-    for (const p of approvedFromStore) {
-      const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
+    const put = (p: Payment) => {
+      if (map.has(p.id)) return;
+      const refundedAmt = refunds[p.id] ?? p.refunded;
       map.set(p.id, {
         ...p,
         refunded: refundedAmt,
         status: refundedAmt >= p.amount ? "refunded" : p.status,
       });
+    };
+    // 1. Live transactions from the backend are authoritative
+    for (const p of backendPayments) {
+      put(p);
     }
-    // 2. Direct transactions from the store (e.g. from chat checkout)
-    for (const p of mappedStoreTx) {
-      if (!map.has(p.id)) {
-        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
-        map.set(p.id, {
-          ...p,
-          refunded: refundedAmt,
-          status: refundedAmt >= p.amount ? "refunded" : p.status,
-        });
+    // 2. Approved items from the approval store (instant optimistic state)
+    for (const p of approvedFromStore) {
+      if (!isMockOrder(p.id)) {
+        put(p);
       }
     }
-    // 3. Real completed transactions from the backend
-    for (const p of backendPayments) {
-      if (!map.has(p.id)) {
-        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
-        map.set(p.id, {
-          ...p,
-          refunded: refundedAmt,
-          status: refundedAmt >= p.amount ? "refunded" : p.status,
-        });
+    // 3. Direct transactions from the store (e.g. from chat checkout)
+    for (const p of mappedStoreTx) {
+      if (!isMockOrder(p.id)) {
+        put(p);
       }
     }
     // 4. Base seed payments
     for (const p of payments) {
-      if (!map.has(p.id)) {
-        const refundedAmt = refunds[p.id] !== undefined ? refunds[p.id] : p.refunded;
-        map.set(p.id, {
-          ...p,
-          refunded: refundedAmt,
-          status: refundedAmt >= p.amount ? "refunded" : p.status,
-        });
-      }
+      put(p);
     }
 
     return Array.from(map.values());
@@ -528,64 +518,84 @@ export function Transactions() {
                 </div>
               </div>
               {selected.status === "pending" && (
-                <div className="mt-6 rounded-md border border-warning/30 bg-warning/10 p-3.5 space-y-2.5">
-                  <div className="flex items-center gap-2 font-semibold text-xs text-warning">
-                    <Clock className="size-4" />
-                    <span>Payment Not Captured · Awaiting Checkout</span>
+                isMockOrder(selected.id) ? (
+                  <div className="mt-6 rounded-md border border-warning/30 bg-warning/10 p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 font-semibold text-xs text-warning">
+                      <Clock className="size-4" />
+                      <span>Legacy Mock Order ({selected.id})</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      This placeholder order was created before live PayPal Sandbox credentials were active and cannot be checked out in PayPal Sandbox. Create or approve a new purchase to generate a live Sandbox order ID.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 gap-1.5"
+                        onClick={() => {
+                          useMandateStore.getState().dismissTransaction(selected.id);
+                          setSelected(null);
+                          toast.info(`Removed stale mock order ${selected.id} from local ledger.`);
+                        }}
+                      >
+                        Remove Legacy Mock Entry
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    This order was authorized by policy, but PayPal payment has not yet been completed. It is not counted towards settled spend.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="paypal"
-                      className="text-xs h-8 gap-1.5"
-                      onClick={() => {
-                        if (selected.id.startsWith("MOCK-") || selected.id.startsWith("PAYPAL-SBX-")) {
-                          toast.error("Cannot open PayPal Sandbox for a mock/placeholder order ID", {
-                            description: `Order ID: ${selected.id}`,
-                          });
-                          return;
-                        }
-                        window.open(`https://www.sandbox.paypal.com/checkoutnow?token=${selected.id}`, "_blank");
-                      }}
-                    >
-                      <ExternalLink className="size-3.5" />
-                      Pay in PayPal Sandbox
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={capturingId === selected.id}
-                      className="text-xs h-8 border-safe text-safe hover:bg-safe/10 gap-1.5"
-                      onClick={async () => {
-                        setCapturingId(selected.id);
-                        try {
-                          await mandateApi.completeTransaction(selected.id, {
-                            paypal_order_id: selected.id,
-                            amount_cents: Math.round(selected.amount * 100),
-                            merchant: selected.merchant,
-                            description: selected.item,
-                          });
-                          useMandateStore.getState().completeTransaction(selected.id, selected.id);
-                          useMandateStore.getState().markRequestPaid(selected.id, selected.id);
-                          void fetchTransactions();
-                          void loadBackendTransactions();
-                          toast.success("Payment captured and settled in PayPal Sandbox!");
-                          setSelected((prev) => prev ? { ...prev, status: "completed", verdict: "APPROVE · PAID" } : null);
-                        } catch (err: any) {
-                          toast.error(err?.message || "PayPal payment has not been captured yet");
-                        } finally {
-                          setCapturingId(null);
-                        }
-                      }}
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                      {capturingId === selected.id ? "Capturing..." : "Confirm Payment Captured"}
-                    </Button>
+                ) : (
+                  <div className="mt-6 rounded-md border border-warning/30 bg-warning/10 p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 font-semibold text-xs text-warning">
+                      <Clock className="size-4" />
+                      <span>Payment Not Captured · Awaiting Checkout</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      This order was authorized by policy, but PayPal payment has not yet been completed. It is not counted towards settled spend.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="paypal"
+                        className="text-xs h-8 gap-1.5"
+                        onClick={() => {
+                          window.open(`https://www.sandbox.paypal.com/checkoutnow?token=${selected.id}`, "_blank");
+                        }}
+                      >
+                        <ExternalLink className="size-3.5" />
+                        Pay in PayPal Sandbox
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={capturingId === selected.id}
+                        className="text-xs h-8 border-safe text-safe hover:bg-safe/10 gap-1.5"
+                        onClick={async () => {
+                          setCapturingId(selected.id);
+                          try {
+                            await mandateApi.completeTransaction(selected.id, {
+                              paypal_order_id: selected.id,
+                              amount_cents: Math.round(selected.amount * 100),
+                              merchant: selected.merchant,
+                              description: selected.item,
+                            });
+                            useMandateStore.getState().completeTransaction(selected.id, selected.id);
+                            useMandateStore.getState().markRequestPaid(selected.id, selected.id);
+                            void fetchTransactions();
+                            void loadBackendTransactions();
+                            toast.success("Payment captured and settled in PayPal Sandbox!");
+                            setSelected((prev) => prev ? { ...prev, status: "completed", verdict: "APPROVE · PAID" } : null);
+                          } catch (err: any) {
+                            toast.error(err?.message || "PayPal payment has not been captured yet");
+                          } finally {
+                            setCapturingId(null);
+                          }
+                        }}
+                      >
+                        <CheckCircle2 className="size-3.5" />
+                        {capturingId === selected.id ? "Capturing..." : "Confirm Payment Captured"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )
               )}
               {selected.status === "completed" && selected.refunded < selected.amount && (
                 <Button
