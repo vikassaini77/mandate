@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
-from packages.ml.manager import MLManager
 from packages.ml.faiss_injection import faiss_defense
+from packages.ml.manager import MLManager
+from pydantic import BaseModel
 
 router = APIRouter()
 
