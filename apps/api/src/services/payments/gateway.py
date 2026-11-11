@@ -11,28 +11,31 @@ class PaymentIntent(BaseModel):
     currency: str
     provider_raw: Dict[str, Any]
 
+
 class PaymentGateway(ABC):
     """
     Abstract Base Class representing a standardized interface for all payment gateways.
     Implementations (PayPal, Stripe, Mock) must conform to this interface.
     """
-    
+
     @abstractmethod
     async def create_intent(
-        self, 
-        amount_cents: int, 
-        currency: str, 
-        reference_id: str, 
-        idempotency_key: Optional[str] = None
+        self,
+        amount_cents: int,
+        currency: str,
+        reference_id: str,
+        idempotency_key: Optional[str] = None,
+        return_url: Optional[str] = None,
+        cancel_url: Optional[str] = None,
     ) -> PaymentIntent:
         """Creates a payment intent/order that the user will approve."""
         pass
 
     @abstractmethod
     async def capture_intent(
-        self, 
-        intent_id: str, 
-        idempotency_key: Optional[str] = None
+        self,
+        intent_id: str,
+        idempotency_key: Optional[str] = None,
     ) -> PaymentIntent:
         """Captures the funds after user approval."""
         pass
@@ -44,11 +47,11 @@ class PaymentGateway(ABC):
 
     @abstractmethod
     async def refund(
-        self, 
-        capture_id: str, 
-        amount_cents: Optional[int] = None, 
-        currency: Optional[str] = None, 
-        idempotency_key: Optional[str] = None
+        self,
+        capture_id: str,
+        amount_cents: Optional[int] = None,
+        currency: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Refunds a captured payment."""
         pass

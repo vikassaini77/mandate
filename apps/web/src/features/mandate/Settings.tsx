@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { mandateApi } from "./api";
+import { mandateApi, BACKEND_URL } from "./api";
 import { useMandateStore } from "./store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -426,29 +426,48 @@ export function Settings() {
   const [testingPayPal, setTestingPayPal] = useState(false);
   const [showPayPalModal, setShowPayPalModal] = useState(false);
   const [paypalLatency, setPaypalLatency] = useState<number | null>(null);
+  const [paypalStatus, setPaypalStatus] = useState<{
+    mode?: string;
+    mock_mode?: boolean;
+    base_url?: string;
+    client_id_preview?: string;
+    client_id_configured?: boolean;
+    client_secret_configured?: boolean;
+    frontend_url?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    mandateApi
+      .getPayPalStatus()
+      .then((data) => setPaypalStatus(data))
+      .catch(() => {});
+  }, []);
 
   const handleTestPayPalGateway = async () => {
     setTestingPayPal(true);
-    const start = Date.now();
     try {
-      const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
       const res = await fetch(`${BACKEND_URL}/api/v1/settings/integrations/paypal/test`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": "dev-agent-key-123" }
+        headers: { "Content-Type": "application/json", "X-API-Key": "dev-agent-key-123" },
       });
-      if (res.ok) {
-        const data = await res.json();
-        const latency = data.latency_ms || Math.max(45, Date.now() - start);
-        setPaypalLatency(latency);
-        toast.success(`PayPal Gateway Verified (${latency}ms · ${data.gateway})`);
-        setTestingPayPal(false);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.detail || `PayPal gateway test failed (HTTP ${res.status})`);
         return;
       }
-    } catch {}
-    const latency = Math.max(68, Date.now() - start);
-    setPaypalLatency(latency);
-    toast.success(`PayPal Sandbox Gateway Verified (${latency}ms · Orders v2 Active)`);
-    setTestingPayPal(false);
+      if (data.mock_mode || data.status === "mock") {
+        setPaypalLatency(null);
+        toast.warning(data.message || "PayPal backend is running in MOCK mode");
+        return;
+      }
+      const latency = data.latency_ms ?? null;
+      setPaypalLatency(latency);
+      toast.success(`PayPal Gateway Verified (${latency}ms · ${data.gateway})`);
+    } catch (err: any) {
+      toast.error(err?.message || "Could not reach backend PayPal gateway check");
+    } finally {
+      setTestingPayPal(false);
+    }
   };
 
   const handleSaveWebhookConfig = async () => {
@@ -1018,7 +1037,11 @@ export function Settings() {
             <SettingsPanel title="Integrations" icon={CreditCard}>
               <Row
                 title="PayPal Sandbox"
-                detail="Connected · Orders v2 verified gateway (api-m.sandbox.paypal.com)"
+                detail={
+                  paypalStatus?.mock_mode
+                    ? `Mock Mode · Configure PAYPAL_CLIENT_ID & PAYPAL_CLIENT_SECRET (${BACKEND_URL})`
+                    : `${paypalStatus?.mode === "live" ? "Live" : "Sandbox"} · Orders v2 gateway (${(paypalStatus?.base_url || "https://api-m.sandbox.paypal.com").replace(/^https?:\/\//, "")})`
+                }
                 action={
                   <div className="flex items-center gap-2">
                     <Button
@@ -1424,31 +1447,39 @@ export function Settings() {
             <div className="rounded-md border border-border bg-subtle/50 p-3 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Gateway Endpoint:</span>
-                <span className="font-mono text-foreground">api-m.sandbox.paypal.com</span>
+                <span className="font-mono text-foreground">
+                  {(paypalStatus?.base_url || "https://api-m.sandbox.paypal.com").replace(/^https?:\/\//, "")}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Protocol:</span>
-                <span className="font-mono text-safe">HTTPS / TLS 1.3 Verified</span>
+                <span className="text-muted-foreground">Mode:</span>
+                <span className={cn("font-mono", paypalStatus?.mock_mode ? "text-warning" : "text-safe")}>
+                  {paypalStatus?.mock_mode ? "MOCK SIMULATOR" : paypalStatus?.mode === "live" ? "LIVE PRODUCTION" : "SANDBOX ORDERS v2"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Orders API:</span>
                 <span className="font-mono text-foreground">v2 / checkout</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Merchant Account ID:</span>
-                <span className="font-mono text-foreground">MND-SANDBOX-MERCHANT-01</span>
+                <span className="text-muted-foreground">Return URL Base:</span>
+                <span className="font-mono text-foreground truncate max-w-[260px]">
+                  {paypalStatus?.frontend_url || "https://mandate-2ht2.vercel.app"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Gateway Status:</span>
-                <span className="font-mono text-safe">● Operational · Live Node</span>
+                <span className={cn("font-mono", paypalStatus?.mock_mode ? "text-warning" : "text-safe")}>
+                  {paypalStatus?.mock_mode ? "● Mock Fallback Active" : "● Operational · Credentials Loaded"}
+                </span>
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Sandbox Client ID</Label>
+              <Label className="text-xs font-semibold">Configured Client ID</Label>
               <div className="mt-1.5 flex items-center gap-2">
                 <Input
-                  value="AX_sbx_99f021e84d7a6b3c1e2f4a0b6f2a"
+                  value={paypalStatus?.client_id_preview || "Checking live backend..."}
                   readOnly
                   className="font-mono text-xs text-muted-foreground"
                 />
@@ -1456,8 +1487,9 @@ export function Settings() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText("AX_sbx_99f021e84d7a6b3c1e2f4a0b6f2a");
-                    toast.success("Sandbox Client ID copied to clipboard");
+                    const val = paypalStatus?.client_id_preview || "";
+                    navigator.clipboard.writeText(val);
+                    toast.success("Client ID preview copied to clipboard");
                   }}
                   title="Copy Client ID"
                 >
@@ -1470,7 +1502,7 @@ export function Settings() {
               <Label className="text-xs font-semibold">Sandbox Webhook Handler</Label>
               <div className="mt-1.5 flex items-center gap-2">
                 <Input
-                  value="https://api.mandate.app/v1/billing/webhook"
+                  value={`${BACKEND_URL}/api/v1/webhooks/paypal`}
                   readOnly
                   className="font-mono text-xs text-muted-foreground"
                 />
@@ -1478,7 +1510,8 @@ export function Settings() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText("https://api.mandate.app/v1/billing/webhook");
+                    const hookUrl = `${BACKEND_URL}/api/v1/webhooks/paypal`;
+                    navigator.clipboard.writeText(hookUrl);
                     toast.success("PayPal webhook URL copied");
                   }}
                   title="Copy Webhook URL"

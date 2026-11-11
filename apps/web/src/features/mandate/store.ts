@@ -244,10 +244,22 @@ export const useMandateStore = create<MandateState>()(
           const res = await mandateApi.getTransactions();
           if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
             const mapped: TransactionRecord[] = res.data.map((tx: any) => {
+              const paymentStatus = (tx.payment_status || "").toLowerCase();
               const st = (tx.status || "").toLowerCase();
-              const isCompleted = st === "completed";
+              const isRefunded = paymentStatus === "refunded" || st === "refunded";
               const isDenied = st === "denied" || st === "blocked" || (tx.verdict || "").toLowerCase() === "block";
-              const status: "completed" | "pending" | "refunded" | "denied" = isCompleted ? "completed" : isDenied ? "denied" : "pending";
+              const isCompleted =
+                !isRefunded &&
+                !isDenied &&
+                (paymentStatus ? paymentStatus === "completed" : st === "completed");
+              const status: "completed" | "pending" | "refunded" | "denied" = isRefunded
+                ? "refunded"
+                : isCompleted
+                ? "completed"
+                : isDenied
+                ? "denied"
+                : "pending";
+              const refunded = typeof tx.refunded_cents === "number" ? tx.refunded_cents / 100 : 0;
               return {
                 id: tx.paypal_order_id || tx.id,
                 merchant: tx.merchant || "Authorized Merchant",
@@ -255,9 +267,16 @@ export const useMandateStore = create<MandateState>()(
                 amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
                 status,
                 category: tx.category || "General",
-                verdict: isCompleted ? (tx.verdict || "APPROVE") : isDenied ? "BLOCK" : "PENDING_PAYMENT",
+                verdict: isRefunded
+                  ? "REFUNDED"
+                  : isCompleted
+                  ? (tx.verdict || "APPROVE")
+                  : isDenied
+                  ? "BLOCK"
+                  : "PENDING_PAYMENT",
                 ruleId: tx.rule_id || "MND-AUTO",
                 reason: tx.reason,
+                refunded,
                 date: tx.timestamp
                   ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
                   : "Just now",

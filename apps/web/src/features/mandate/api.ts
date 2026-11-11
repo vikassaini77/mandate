@@ -22,6 +22,8 @@ export interface MandateApi {
   denyTransaction(id: string): Promise<any>;
   getTransactions(): Promise<any>;
   completeTransaction(id: string, payload?: { paypal_order_id?: string; amount_cents?: number; merchant?: string; description?: string }): Promise<any>;
+  refundTransaction(id: string, payload?: { amount_cents?: number; currency?: string }): Promise<any>;
+  getPayPalStatus(): Promise<any>;
   getActivity(): Promise<typeof activity>;
   getAuditEvents(): Promise<AuditRecord[]>;
   getProducts(): Promise<Product[]>;
@@ -102,7 +104,23 @@ const mockApi: MandateApi = {
     return { data: [] };
   },
   async completeTransaction(id: string) {
-    return { status: 'success' };
+    return { status: 'success', order_id: id, capture_id: `MOCK-CAP-${id}` };
+  },
+  async refundTransaction(id: string) {
+    return { status: 'success', refund: { id: `MOCK-REFUND-${id}`, status: 'COMPLETED' } };
+  },
+  async getPayPalStatus() {
+    return {
+      status: 'ok',
+      mode: 'mock',
+      mock_mode: true,
+      environment: 'mock',
+      base_url: 'https://api-m.sandbox.paypal.com',
+      client_id_configured: false,
+      client_secret_configured: false,
+      client_id_preview: 'mock_client_id',
+      frontend_url: typeof window !== 'undefined' ? window.location.origin : 'https://mandate-2ht2.vercel.app',
+    };
   },
   async getActivity() {
     await pause();
@@ -217,35 +235,20 @@ const realApi: MandateApi = {
     } catch {}
     return { data: [] };
   },
-  async approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string }) {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/approvals/${id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': 'dev-agent-key-123',
-        },
-        body: JSON.stringify(payload || {}),
-      });
-      if (res.ok) return await res.json();
-    } catch {}
-    const randHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-      .toUpperCase();
-    const orderId = `5O${randHex}`;
-    const approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
-    return {
-      status: 'success',
-      data: { id, paypal_order_id: orderId, status: 'approved' },
-      intent: {
-        id: orderId,
-        provider_raw: {
-          id: orderId,
-          links: [{ rel: 'approve', href: approveLink }],
-        },
+  async approveTransaction(id: string, payload?: { amount_cents?: number; merchant?: string; category?: string }) {
+    const res = await fetch(`${BACKEND_URL}/api/v1/approvals/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'dev-agent-key-123',
       },
-    };
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.detail || data?.message || `Failed to approve transaction (HTTP ${res.status})`);
+    }
+    return data;
   },
   async denyTransaction(id: string) {
     try {
@@ -268,18 +271,44 @@ const realApi: MandateApi = {
     return { data: [] };
   },
   async completeTransaction(id: string, payload?: { paypal_order_id?: string; amount_cents?: number; merchant?: string; description?: string }) {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/transactions/${id}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': 'dev-agent-key-123',
-        },
-        body: JSON.stringify(payload || {}),
-      });
-      if (res.ok) return await res.json();
-    } catch {}
-    return { status: 'success' };
+    const res = await fetch(`${BACKEND_URL}/api/v1/transactions/${encodeURIComponent(id)}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'dev-agent-key-123',
+      },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.detail || data?.message || `Failed to capture PayPal payment (HTTP ${res.status})`);
+    }
+    return data;
+  },
+  async refundTransaction(id: string, payload?: { amount_cents?: number; currency?: string }) {
+    const res = await fetch(`${BACKEND_URL}/api/v1/transactions/${encodeURIComponent(id)}/refund`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'dev-agent-key-123',
+      },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.detail || data?.message || `Failed to refund PayPal capture (HTTP ${res.status})`);
+    }
+    return data;
+  },
+  async getPayPalStatus() {
+    const res = await fetch(`${BACKEND_URL}/api/v1/paypal/status`, {
+      headers: { 'X-API-Key': 'dev-agent-key-123' },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.detail || `Failed to fetch PayPal gateway status (HTTP ${res.status})`);
+    }
+    return data;
   },
   async getActivity() {
     try {

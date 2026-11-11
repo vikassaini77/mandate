@@ -3,12 +3,16 @@ import os
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from packages.database.hash_chain import global_audit_chain
 from pydantic import BaseModel
 
 from apps.api.src.services.auth import Principal, Role, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
+from apps.api.src.services.paypal.orders import (
+    build_checkout_return_urls,
+    extract_frontend_origin,
+)
 
 router = APIRouter()
 
@@ -89,7 +93,7 @@ def add_to_approval_queue(item: dict) -> str:
     if "amount" not in item and "amount_cents" in item:
         item["amount"] = item["amount_cents"] / 100.0
     if "amount_cents" not in item and "amount" in item:
-        item["amount_cents"] = int(item["amount"] * 100)
+        item["amount_cents"] = round(item["amount"] * 100)
     if "status" not in item:
         item["status"] = "pending"
     _APPROVAL_QUEUE[req_id] = item
@@ -119,7 +123,7 @@ async def submit_approval_request(
 ):
     """Adds a new purchase request into the persistent human-in-the-loop approval queue."""
     amount = payload.amount if payload.amount is not None else ((payload.amount_cents or 0) / 100.0)
-    amount_cents = payload.amount_cents if payload.amount_cents is not None else int(amount * 100)
+    amount_cents = payload.amount_cents if payload.amount_cents is not None else round(amount * 100)
     req_id = payload.id or f"appr_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
     item = {
         "id": req_id,
@@ -146,12 +150,13 @@ async def get_approval_queue(
     principal: Principal = Depends(require_roles([Role.ADMIN, Role.MANAGER, Role.SYSTEM_AGENT])),
 ):
     """Returns all items in the persistent approval queue."""
-    return {"data": list(_APPROVAL_QUEUE.values())}
+    return {"data": list(_APPROVAL_QUEUE.values())[skip : skip + limit]}
 
 
 @router.post("/{approval_id}/approve")
 async def approve(
     approval_id: str,
+    request: Request,
     payload: Optional[ApproveRequest] = None,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     principal: Principal = Depends(require_roles([Role.ADMIN, Role.MANAGER, Role.SYSTEM_AGENT])),
@@ -179,7 +184,10 @@ async def approve(
 
     amount_cents = req.get("amount_cents")
     if amount_cents is None:
-        amount_cents = int(req.get("amount", 0) * 100)
+        amount_cents = round(req.get("amount", 0) * 100)
+
+    frontend_origin = extract_frontend_origin(request.headers)
+    return_url, cancel_url = build_checkout_return_urls(frontend_origin)
 
     gateway = PaymentGatewayFactory.get_gateway()
     try:
@@ -189,6 +197,8 @@ async def approve(
             currency="USD",
             reference_id=f"approved_{approval_id}",
             idempotency_key=idempotency_key or f"idem_appr_{approval_id}",
+            return_url=return_url,
+            cancel_url=cancel_url,
         )
 
         resolved_at = datetime.now(timezone.utc).isoformat()
@@ -258,6 +268,7 @@ async def deny(
         for t in tx_mod._TRANSACTIONS:
             if t.get("approval_id") == approval_id or t.get("id") == approval_id:
                 t["status"] = "DENIED"
+                t["payment_status"] = "DENIED"
                 tx_mod._save_transactions()
                 break
     except Exception:

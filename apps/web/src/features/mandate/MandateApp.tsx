@@ -190,6 +190,9 @@ const suggested = [
   "Compare webcams for remote work",
   "Can I expense a mechanical keyboard?",
 ];
+const isMockPayPalOrder = (orderId?: string | null, approveLink?: string | null) =>
+  Boolean(orderId?.startsWith("MOCK-") || approveLink?.includes("mock-approve-url"));
+
 const formatMoney = (value: number) => {
   const currency = typeof window !== "undefined" ? localStorage.getItem("mnd_currency") || "USD" : "USD";
   return new Intl.NumberFormat("en-US", {
@@ -221,9 +224,72 @@ export function MandateApp({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const handledPayPalReturnRef = useRef<string | null>(null);
+
   useEffect(() => {
     void fetchRequests();
+    void useMandateStore.getState().fetchTransactions();
   }, [fetchRequests]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const paypalStatus = params.get("paypal_status");
+    const token = params.get("token");
+    const payerId = params.get("PayerID");
+
+    if (!paypalStatus && !(token && payerId)) return;
+
+    const cleanPayPalParams = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("paypal_status");
+      url.searchParams.delete("token");
+      url.searchParams.delete("PayerID");
+      window.history.replaceState(window.history.state, document.title, `${url.pathname}${url.search}${url.hash}`);
+    };
+
+    if (paypalStatus === "cancel") {
+      const cancelKey = `cancel:${token || ""}`;
+      if (handledPayPalReturnRef.current === cancelKey) return;
+      handledPayPalReturnRef.current = cancelKey;
+      cleanPayPalParams();
+      toast.info("PayPal checkout cancelled", {
+        description: "The order remains pending in Transactions until payment is completed.",
+      });
+      return;
+    }
+
+    if (token && (paypalStatus === "success" || Boolean(payerId))) {
+      const captureKey = `capture:${token}`;
+      if (handledPayPalReturnRef.current === captureKey) return;
+      handledPayPalReturnRef.current = captureKey;
+
+      void (async () => {
+        const toastId = toast.loading(`Capturing PayPal order ${token}...`);
+        try {
+          const result = await mandateApi.completeTransaction(token, { paypal_order_id: token });
+          useMandateStore.getState().completeTransaction(token, token);
+          useMandateStore.getState().markRequestPaid(token, token);
+          await Promise.all([
+            useMandateStore.getState().fetchTransactions(),
+            useMandateStore.getState().fetchRequests(),
+          ]);
+          const captureId = result?.capture_id || result?.transaction?.paypal_capture_id;
+          toast.success(`PayPal payment captured (${token})`, {
+            id: toastId,
+            description: captureId
+              ? `Capture ID: ${captureId} · Settled in Transactions`
+              : "Settled in Transactions ledger.",
+          });
+          useMandateStore.getState().setActiveView("transactions");
+        } catch (err: any) {
+          toast.error(err?.message || `Could not capture PayPal order ${token}`, { id: toastId });
+        } finally {
+          cleanPayPalParams();
+        }
+      })();
+    }
+  }, []);
   const { data: profile } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -935,7 +1001,7 @@ function ChatSession({
           description: "A new escalated transaction has been added to your Approvals Center.",
           action: {
             label: "Review",
-            onClick: () => setView("approvals"),
+            onClick: () => useMandateStore.getState().setActiveView("approvals"),
           },
         });
       }
@@ -1439,6 +1505,7 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
   const addRequest = useMandateStore((s) => s.addRequest);
   const setActiveView = useMandateStore((s) => s.setActiveView);
   const [paying, setPaying] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [paidOrder, setPaidOrder] = useState<string | null>(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [submittedApproval, setSubmittedApproval] = useState<string | null>(null);
@@ -1509,13 +1576,45 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
             description: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.detail || data?.message || `Proposal request failed (HTTP ${res.status})`);
+        }
+        if (data?.verdict === "BLOCK") {
+          toast.error("Blocked by Sentinel Policy Engine", {
+            description: data?.reason || "Purchase violated an active policy rule.",
+          });
+          return;
+        }
+        if (data?.verdict === "ESCALATE") {
+          const escalatedId = data?.transaction?.approval_id || `appr_${Date.now()}`;
+          addRequest({
+            id: escalatedId,
+            merchant: product.merchant,
+            item: `${product.name}${product.quantity > 1 ? ` (Qty: ${product.quantity})` : ""}`,
+            amount: product.price,
+            reason: data?.reason || "Escalated by policy engine for manager approval.",
+          });
+          setSubmittedApproval(escalatedId);
+          toast.warning("Escalated to Approvals Center!", {
+            description: data?.reason || "Submitted for manager review.",
+          });
+          return;
+        }
         const order = data?.paypal_order;
         if (order?.id) {
-          setPaidOrder(order.id);
-          const approveLink =
-            order.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
-            `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}`;
+          const approveLink = order.provider_raw?.links?.find(
+            (l: any) => l.rel === "approve" || l.rel === "payer-action",
+          )?.href;
+          if (isMockPayPalOrder(order.id, approveLink)) {
+            toast.error("Backend PayPal client is in Mock Mode", {
+              description: `Endpoint ${API_V1_URL} returned mock order ${order.id}. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET with MOCK_PAYPAL=false on the backend.`,
+            });
+            return;
+          }
+
+          const resolvedApproveLink =
+            approveLink || `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}`;
 
           setPaidOrder(order.id);
           setOrderCompleted(false);
@@ -1532,15 +1631,15 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
             ruleId: "MND-LIM-012",
             reason: `Auto-approved: ${product.category} at or below $${autoApproveLimit} limit. Awaiting payment checkout.`,
             paypalOrderId: order.id,
-            paypalApproveLink: approveLink,
+            paypalApproveLink: resolvedApproveLink,
           });
 
           toast.success("PayPal Sandbox Order Created!", {
             description: `Order ID: ${order.id}. Opening Sandbox checkout window...`,
           });
-          window.open(approveLink, "_blank");
+          window.open(resolvedApproveLink, "_blank");
         } else {
-          toast.info("Transaction evaluated: " + (data.reason || "Approved"));
+          toast.error(data?.transaction?.paypal_error || "PayPal order was not returned by backend.");
         }
       } else {
         // Exceeds limit: Do NOT open PayPal from chat! Route to Approvals Center!
@@ -1595,26 +1694,30 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
   const handleQuickApproveAndPay = async (reqId: string) => {
     setPaying(true);
     try {
-      useMandateStore.getState().resolveRequest(reqId, "approved");
       const res = await mandateApi.approveTransaction(reqId, {
         amount_cents: Math.round(product.price * 100),
         merchant: product.merchant,
         category: product.category,
       });
-      let orderId = res?.intent?.id || res?.intent?.provider_raw?.id || res?.data?.paypal_order_id;
-      let approveLink =
-        res?.intent?.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
-        (orderId ? `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}` : null);
+      const orderId = res?.intent?.id || res?.intent?.provider_raw?.id || res?.data?.paypal_order_id;
+      const rawApproveLink = res?.intent?.provider_raw?.links?.find(
+        (l: any) => l.rel === "approve" || l.rel === "payer-action",
+      )?.href;
 
       if (!orderId) {
-        const randHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")
-          .toUpperCase();
-        orderId = `5O${randHex}`;
-        approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+        throw new Error("Backend did not return a PayPal Sandbox order ID.");
+      }
+      if (isMockPayPalOrder(orderId, rawApproveLink)) {
+        toast.error("Backend PayPal client is in Mock Mode", {
+          description: `Endpoint ${API_V1_URL} returned mock order ${orderId}. Configure PAYPAL_CLIENT_ID & PAYPAL_CLIENT_SECRET on the backend.`,
+        });
+        return;
       }
 
+      const approveLink =
+        rawApproveLink || `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+
+      useMandateStore.getState().resolveRequest(reqId, "approved");
       setPaidOrder(orderId);
       setOrderCompleted(false);
 
@@ -1774,21 +1877,29 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={capturing}
                       className="gap-1 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
-                      onClick={() => {
-                        useMandateStore.getState().completeTransaction(paidOrder);
-                        mandateApi.completeTransaction?.(paidOrder, {
-                          paypal_order_id: paidOrder,
-                          amount_cents: Math.round(product.price * 100),
-                          merchant: product.merchant,
-                          description: product.name,
-                        })?.catch?.(() => {});
-                        setOrderCompleted(true);
-                        toast.success("Payment confirmed captured and settled!");
+                      onClick={async () => {
+                        setCapturing(true);
+                        try {
+                          await mandateApi.completeTransaction(paidOrder, {
+                            paypal_order_id: paidOrder,
+                            amount_cents: Math.round(product.price * 100),
+                            merchant: product.merchant,
+                            description: product.name,
+                          });
+                          useMandateStore.getState().completeTransaction(paidOrder, paidOrder);
+                          setOrderCompleted(true);
+                          toast.success("Payment confirmed captured and settled!");
+                        } catch (err: any) {
+                          toast.error(err?.message || "Payment has not been approved in PayPal yet.");
+                        } finally {
+                          setCapturing(false);
+                        }
                       }}
                     >
                       <Check className="size-3.5" />
-                      I Have Paid
+                      {capturing ? "Capturing..." : "I Have Paid"}
                     </Button>
                   </div>
                 </div>
@@ -1841,20 +1952,28 @@ function ProductProposal({ customProduct }: { customProduct?: DynamicProduct }) 
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={capturing}
                           className="gap-1 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
-                          onClick={() => {
-                            useMandateStore.getState().markRequestPaid(req.id, req.paypal_order_id);
-                            mandateApi.completeTransaction?.(req.id, {
-                              paypal_order_id: req.paypal_order_id,
-                              amount_cents: Math.round(req.amount * 100),
-                              merchant: req.merchant,
-                              description: req.item,
-                            })?.catch?.(() => {});
-                            toast.success("Payment marked as captured!");
+                          onClick={async () => {
+                            setCapturing(true);
+                            try {
+                              await mandateApi.completeTransaction(req.id, {
+                                ...(req.paypal_order_id ? { paypal_order_id: req.paypal_order_id } : {}),
+                                amount_cents: Math.round(req.amount * 100),
+                                merchant: req.merchant,
+                                description: req.item,
+                              });
+                              useMandateStore.getState().markRequestPaid(req.id, req.paypal_order_id);
+                              toast.success("Payment captured and settled!");
+                            } catch (err: any) {
+                              toast.error(err?.message || "Payment has not been approved in PayPal yet.");
+                            } finally {
+                              setCapturing(false);
+                            }
                           }}
                         >
                           <Check className="size-3.5" />
-                          I Have Paid
+                          {capturing ? "Capturing..." : "I Have Paid"}
                         </Button>
                       </div>
                     </div>
@@ -2213,6 +2332,7 @@ function Approvals() {
   const resolve = useMandateStore((state) => state.resolveRequest);
   const fetchRequests = useMandateStore((state) => state.fetchRequests);
   const resetRequests = useMandateStore((state) => state.resetRequests);
+  const setActiveView = useMandateStore((state) => state.setActiveView);
   const [selected, setSelected] = useState<string | null>(null);
   const [verifyingRequest, setVerifyingRequest] = useState<{ id: string, action: "approve" | "sign" } | null>(null);
   const [checkoutSession, setCheckoutSession] = useState<{
@@ -2236,13 +2356,8 @@ function Approvals() {
   }, [fetchRequests]);
 
   const decide = async (id: string, status: Exclude<RequestStatus, "pending">) => {
-    resolve(id, status);
     setSelected(null);
     if (status === "approved") {
-      setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
-      setCelebrate(true);
-      window.setTimeout(() => setCelebrate(false), 1400);
-
       try {
         const targetReq = requests.find((r) => r.id === id);
         const res = await mandateApi.approveTransaction(id, {
@@ -2250,19 +2365,29 @@ function Approvals() {
           merchant: targetReq?.merchant || "Vendor",
           category: "Electronics",
         });
-        let orderId = res?.intent?.id || res?.intent?.provider_raw?.id || res?.data?.paypal_order_id;
-        let approveLink =
-          res?.intent?.provider_raw?.links?.find((l: any) => l.rel === "approve" || l.rel === "payer-action")?.href ||
-          (orderId ? `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}` : null);
+        const orderId = res?.intent?.id || res?.intent?.provider_raw?.id || res?.data?.paypal_order_id;
+        const rawApproveLink = res?.intent?.provider_raw?.links?.find(
+          (l: any) => l.rel === "approve" || l.rel === "payer-action",
+        )?.href;
 
         if (!orderId) {
-          const randHex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
-            .toUpperCase();
-          orderId = `5O${randHex}`;
-          approveLink = `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+          toast.error("Backend did not return a PayPal Sandbox order ID.");
+          return;
         }
+        if (isMockPayPalOrder(orderId, rawApproveLink)) {
+          toast.error("Backend PayPal client is in Mock Mode", {
+            description: `Endpoint ${API_V1_URL} returned mock order ${orderId}. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET with MOCK_PAYPAL=false on the backend.`,
+          });
+          return;
+        }
+
+        const approveLink =
+          rawApproveLink || `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+
+        resolve(id, status);
+        setAnnouncement("Purchase approved and authorized in PayPal Sandbox");
+        setCelebrate(true);
+        window.setTimeout(() => setCelebrate(false), 1400);
 
         // Persistent active checkout banner with pending payment state
         setCheckoutSession({
@@ -2303,6 +2428,7 @@ function Approvals() {
         toast.error("Approval error: " + (err.message || String(err)));
       }
     } else {
+      resolve(id, status);
       mandateApi.denyTransaction(id).catch(console.error);
       setAnnouncement("Purchase denied and removed from the approval queue");
       toast.error("Purchase denied");
@@ -2388,17 +2514,22 @@ function Approvals() {
                     variant="outline"
                     size="sm"
                     className="gap-1.5 text-xs border-safe text-safe hover:bg-safe/10 font-semibold"
-                    onClick={() => {
-                      useMandateStore.getState().completeTransaction(checkoutSession.orderId);
-                      useMandateStore.getState().markRequestPaid(checkoutSession.id, checkoutSession.orderId);
-                      mandateApi.completeTransaction?.(checkoutSession.id, {
-                        paypal_order_id: checkoutSession.orderId,
-                        amount_cents: Math.round(checkoutSession.amount * 100),
-                        merchant: checkoutSession.merchant,
-                        description: checkoutSession.item,
-                      })?.catch?.(() => {});
-                      setCheckoutSession((prev: any) => prev ? { ...prev, completed: true } : null);
-                      toast.success("Payment confirmed captured! Transaction marked settled.");
+                    onClick={async () => {
+                      const toastId = toast.loading(`Capturing PayPal order ${checkoutSession.orderId}...`);
+                      try {
+                        await mandateApi.completeTransaction(checkoutSession.id, {
+                          paypal_order_id: checkoutSession.orderId,
+                          amount_cents: Math.round(checkoutSession.amount * 100),
+                          merchant: checkoutSession.merchant,
+                          description: checkoutSession.item,
+                        });
+                        useMandateStore.getState().completeTransaction(checkoutSession.orderId, checkoutSession.orderId);
+                        useMandateStore.getState().markRequestPaid(checkoutSession.id, checkoutSession.orderId);
+                        setCheckoutSession((prev: any) => (prev ? { ...prev, completed: true } : null));
+                        toast.success("Payment confirmed captured! Transaction marked settled.", { id: toastId });
+                      } catch (err: any) {
+                        toast.error(err?.message || "Payment has not been approved in PayPal yet.", { id: toastId });
+                      }
                     }}
                   >
                     <Check className="size-3.5" />

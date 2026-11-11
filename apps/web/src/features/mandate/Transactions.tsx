@@ -128,52 +128,63 @@ export function Transactions() {
   const [selected, setSelected] = useState<Payment | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundAmount, setRefundAmount] = useState("");
+  const [refunding, setRefunding] = useState(false);
+  const [capturingId, setCapturingId] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+
+  const loadBackendTransactions = async () => {
+    try {
+      const json = await mandateApi.getTransactions();
+      if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+        const mapped: Payment[] = json.data.map((tx: any) => {
+          const paymentStatus = (tx.payment_status || "").toLowerCase();
+          const st = (tx.status || "").toLowerCase();
+          const isRefunded = paymentStatus === "refunded" || st === "refunded";
+          const isDenied = st === "denied" || st === "blocked" || (tx.verdict || "").toLowerCase() === "block";
+          const isPaid =
+            !isRefunded &&
+            !isDenied &&
+            (paymentStatus ? paymentStatus === "completed" : st === "completed");
+          const status: PaymentStatus = isRefunded
+            ? "refunded"
+            : isPaid
+            ? "completed"
+            : isDenied
+            ? "denied"
+            : "pending";
+          const refunded = typeof tx.refunded_cents === "number" ? tx.refunded_cents / 100 : 0;
+          return {
+            id: tx.paypal_order_id || tx.id,
+            merchant: tx.merchant || "Authorized Merchant",
+            item: tx.description || `${tx.category || "Item"} Purchase`,
+            amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
+            status,
+            date: tx.timestamp
+              ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "Just now",
+            mandate: tx.rule_id || "Human-in-the-Loop Approval",
+            verdict: isRefunded
+              ? "REFUNDED"
+              : isPaid
+              ? `${tx.verdict || "APPROVE"} · ${tx.rule_id || "MND-AUTO"}`
+              : isDenied
+              ? `BLOCK · ${tx.rule_id || "DENIED"}`
+              : "PENDING · AWAITING PAYMENT",
+            refunded,
+            employee: "Security Operator",
+          };
+        });
+        setBackendPayments(mapped);
+      }
+    } catch (err) {
+      console.warn("Failed to load backend transactions:", err);
+    }
+  };
 
   useEffect(() => {
     void fetchTransactions();
-    async function loadBackendTransactions() {
-      try {
-        const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
-        const res = await fetch(`${BACKEND_URL}/api/v1/transactions/`, {
-          headers: { "X-API-Key": "dev-agent-key-123" },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
-            const mapped: Payment[] = json.data.map((tx: any) => {
-              const st = (tx.status || "").toLowerCase();
-              const isPaid = st === "completed";
-              const isDenied = st === "denied" || st === "blocked" || (tx.verdict || "").toLowerCase() === "block";
-              const status: PaymentStatus = isPaid ? "completed" : isDenied ? "denied" : "pending";
-              return {
-                id: tx.paypal_order_id || `PAYPAL-SBX-${tx.id}`,
-                merchant: tx.merchant || "Authorized Merchant",
-                item: tx.description || `${tx.category || "Item"} Purchase`,
-                amount: typeof tx.amount === "number" ? tx.amount : (tx.amount_cents ? tx.amount_cents / 100 : 0),
-                status,
-                date: tx.timestamp
-                  ? new Date(tx.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
-                  : "Just now",
-                mandate: tx.rule_id || "Human-in-the-Loop Approval",
-                verdict: isPaid
-                  ? `${tx.verdict || "APPROVE"} · ${tx.rule_id || "MND-AUTO"}`
-                  : isDenied
-                  ? `BLOCK · ${tx.rule_id || "DENIED"}`
-                  : "PENDING · AWAITING PAYMENT",
-                refunded: 0,
-                employee: "Security Operator",
-              };
-            });
-            setBackendPayments(mapped);
-          }
-        }
-      } catch (err) {
-        console.warn("Failed to load backend transactions:", err);
-      }
-    }
     void loadBackendTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
   const approvedFromStore = useMemo(() => {
     return requests
@@ -301,33 +312,34 @@ export function Transactions() {
   }, [allPayments, filter, query]);
 
   const issueRefund = async () => {
-    if (!selected) return;
+    if (!selected || refunding) return;
     const amount = Number(refundAmount);
     if (!amount || amount <= 0 || amount > selected.amount - selected.refunded) {
       toast.error("Enter an amount within the refundable balance");
       return;
     }
-    const newRefunded = selected.refunded + amount;
-    const newStatus: PaymentStatus = newRefunded >= selected.amount ? "refunded" : "completed";
 
-    setRefunds((prev) => ({ ...prev, [selected.id]: newRefunded }));
-    setSelected((prev) => (prev ? { ...prev, refunded: newRefunded, status: newStatus } : null));
-    setRefundOpen(false);
-    setRefundAmount("");
-
+    setRefunding(true);
     try {
-      const BACKEND_URL = (import.meta.env["VITE_API_URL"] || "http://localhost:8000").replace(/\/api\/v1\/?$/, "");
-      await fetch(`${BACKEND_URL}/api/v1/transactions/${selected.id}/refund`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": "dev-agent-key-123",
-        },
-        body: JSON.stringify({ amount_cents: Math.round(amount * 100) }),
+      await mandateApi.refundTransaction(selected.id, {
+        amount_cents: Math.round(amount * 100),
+        currency: "USD",
       });
-    } catch {}
 
-    toast.success(`$${amount.toFixed(2)} refund submitted in PayPal Sandbox`);
+      const newRefunded = selected.refunded + amount;
+      const newStatus: PaymentStatus = newRefunded >= selected.amount ? "refunded" : "completed";
+      setRefunds((prev) => ({ ...prev, [selected.id]: newRefunded }));
+      setSelected((prev) => (prev ? { ...prev, refunded: newRefunded, status: newStatus } : null));
+      setRefundOpen(false);
+      setRefundAmount("");
+      void fetchTransactions();
+      void loadBackendTransactions();
+      toast.success(`$${amount.toFixed(2)} refund submitted in PayPal Sandbox`);
+    } catch (err: any) {
+      toast.error(err?.message || "PayPal Sandbox refund failed");
+    } finally {
+      setRefunding(false);
+    }
   };
   return (
     <div className="space-y-6">
@@ -529,7 +541,15 @@ export function Transactions() {
                       size="sm"
                       variant="paypal"
                       className="text-xs h-8 gap-1.5"
-                      onClick={() => window.open(`https://www.sandbox.paypal.com/checkoutnow?token=${selected.id}`, "_blank")}
+                      onClick={() => {
+                        if (selected.id.startsWith("MOCK-") || selected.id.startsWith("PAYPAL-SBX-")) {
+                          toast.error("Cannot open PayPal Sandbox for a mock/placeholder order ID", {
+                            description: `Order ID: ${selected.id}`,
+                          });
+                          return;
+                        }
+                        window.open(`https://www.sandbox.paypal.com/checkoutnow?token=${selected.id}`, "_blank");
+                      }}
                     >
                       <ExternalLink className="size-3.5" />
                       Pay in PayPal Sandbox
@@ -537,22 +557,32 @@ export function Transactions() {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={capturingId === selected.id}
                       className="text-xs h-8 border-safe text-safe hover:bg-safe/10 gap-1.5"
-                      onClick={() => {
-                        useMandateStore.getState().completeTransaction(selected.id);
-                        useMandateStore.getState().markRequestPaid(selected.id);
-                        mandateApi.completeTransaction(selected.id, {
-                          paypal_order_id: selected.id,
-                          amount_cents: Math.round(selected.amount * 100),
-                          merchant: selected.merchant,
-                          description: selected.item,
-                        }).catch(() => {});
-                        toast.success("Payment marked as captured and settled!");
-                        setSelected((prev) => prev ? { ...prev, status: "completed", verdict: "APPROVE · PAID" } : null);
+                      onClick={async () => {
+                        setCapturingId(selected.id);
+                        try {
+                          await mandateApi.completeTransaction(selected.id, {
+                            paypal_order_id: selected.id,
+                            amount_cents: Math.round(selected.amount * 100),
+                            merchant: selected.merchant,
+                            description: selected.item,
+                          });
+                          useMandateStore.getState().completeTransaction(selected.id, selected.id);
+                          useMandateStore.getState().markRequestPaid(selected.id, selected.id);
+                          void fetchTransactions();
+                          void loadBackendTransactions();
+                          toast.success("Payment captured and settled in PayPal Sandbox!");
+                          setSelected((prev) => prev ? { ...prev, status: "completed", verdict: "APPROVE · PAID" } : null);
+                        } catch (err: any) {
+                          toast.error(err?.message || "PayPal payment has not been captured yet");
+                        } finally {
+                          setCapturingId(null);
+                        }
                       }}
                     >
                       <CheckCircle2 className="size-3.5" />
-                      Confirm Payment Captured
+                      {capturingId === selected.id ? "Capturing..." : "Confirm Payment Captured"}
                     </Button>
                   </div>
                 </div>
@@ -592,10 +622,12 @@ export function Transactions() {
               className="mt-2 font-mono"
             />
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setRefundOpen(false)}>
+              <Button variant="outline" onClick={() => setRefundOpen(false)} disabled={refunding}>
                 Cancel
               </Button>
-              <Button onClick={issueRefund}>Confirm refund</Button>
+              <Button onClick={issueRefund} disabled={refunding}>
+                {refunding ? "Submitting..." : "Confirm refund"}
+              </Button>
             </div>
           </div>
         </DialogContent>
