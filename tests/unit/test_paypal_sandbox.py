@@ -297,3 +297,111 @@ async def test_complete_transaction_returns_409_when_order_not_approved(isolated
                 assert len(tx_ep._TRANSACTIONS) == 0
     finally:
         paypal_client.mock_mode = orig_mock
+
+
+@pytest.mark.asyncio
+async def test_approve_uses_fresh_idempotency_key_per_attempt_and_surfaces_422(isolated_stores):
+    seen_keys = []
+
+    class TrackingGateway:
+        async def create_intent(self, **kwargs):
+            seen_keys.append(kwargs.get("idempotency_key"))
+            return PaymentIntent(
+                id="ORDERFRESH001",
+                status="PAYER_ACTION_REQUIRED",
+                amount_cents=kwargs["amount_cents"],
+                currency=kwargs["currency"],
+                provider_raw={"id": "ORDERFRESH001", "status": "PAYER_ACTION_REQUIRED", "links": []},
+            )
+
+    approvals_ep._APPROVAL_QUEUE["req-2"] = {
+        "id": "req-2",
+        "merchant": "B&H Photo",
+        "item": "Webcam",
+        "amount": 149,
+        "amount_cents": 14900,
+        "status": "pending",
+    }
+
+    with patch.object(approvals_ep.PaymentGatewayFactory, "get_gateway", return_value=TrackingGateway()):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            r1 = await ac.post("/api/v1/approvals/req-2/approve", json={}, headers=AUTH_HEADERS)
+            assert r1.status_code == 200
+            assert seen_keys[-1].startswith("idem_appr_req-2_")
+
+            # Simulate seed reset (same approval ID approved a second time)
+            approvals_ep._APPROVAL_QUEUE["req-2"]["status"] = "pending"
+            r2 = await ac.post("/api/v1/approvals/req-2/approve", json={}, headers=AUTH_HEADERS)
+            assert r2.status_code == 200
+            assert seen_keys[0] != seen_keys[1]
+
+    class FailingGateway:
+        async def create_intent(self, **kwargs):
+            raise PayPalOrderError(
+                "Failed to create order",
+                422,
+                debug_id="dbg123",
+                raw_response={
+                    "details": [
+                        {"issue": "ORDER_ALREADY_CAPTURED", "description": "Order already captured."}
+                    ]
+                },
+            )
+
+    approvals_ep._APPROVAL_QUEUE["req-2"]["status"] = "pending"
+    with patch.object(approvals_ep.PaymentGatewayFactory, "get_gateway", return_value=FailingGateway()):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            fail_res = await ac.post("/api/v1/approvals/req-2/approve", json={}, headers=AUTH_HEADERS)
+            assert fail_res.status_code == 422
+            assert "ORDER_ALREADY_CAPTURED" in fail_res.json()["detail"]
+            assert "dbg123" in fail_res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_complete_transaction_returns_actionable_422_on_compliance_violation(isolated_stores):
+    order_id = "COMPVIOL999"
+
+    class ComplianceGateway:
+        async def capture_intent(self, intent_id: str, idempotency_key: str = None):
+            raise PayPalOrderError(
+                "Failed to capture order",
+                422,
+                debug_id="ca58eb2512cf3",
+                raw_response={
+                    "details": [
+                        {
+                            "issue": "COMPLIANCE_VIOLATION",
+                            "description": "Transaction cannot be processed due to a possible compliance violation.",
+                        }
+                    ]
+                },
+            )
+
+        async def get_intent(self, intent_id: str):
+            return PaymentIntent(
+                id=intent_id,
+                status="APPROVED",
+                amount_cents=11999,
+                currency="USD",
+                provider_raw={"id": intent_id, "status": "APPROVED"},
+            )
+
+    orig_mock = paypal_client.mock_mode
+    paypal_client.mock_mode = False
+    try:
+        with patch.object(tx_ep.PaymentGatewayFactory, "get_gateway", return_value=ComplianceGateway()):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                res = await ac.post(
+                    f"/api/v1/transactions/{order_id}/complete",
+                    json={"paypal_order_id": order_id},
+                    headers=AUTH_HEADERS,
+                )
+                assert res.status_code == 422
+                detail = res.json()["detail"]
+                assert "COMPLIANCE_VIOLATION" in detail
+                assert "ca58eb2512cf3" in detail
+    finally:
+        paypal_client.mock_mode = orig_mock

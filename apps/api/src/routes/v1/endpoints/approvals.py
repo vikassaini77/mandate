@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -9,9 +10,11 @@ from pydantic import BaseModel
 
 from apps.api.src.services.auth import Principal, Role, require_roles
 from apps.api.src.services.payments.factory import PaymentGatewayFactory
+from apps.api.src.services.paypal.errors import PayPalAPIError
 from apps.api.src.services.paypal.orders import (
     build_checkout_return_urls,
     extract_frontend_origin,
+    extract_paypal_issue,
 )
 
 router = APIRouter()
@@ -189,6 +192,8 @@ async def approve(
     frontend_origin = extract_frontend_origin(request.headers)
     return_url, cancel_url = build_checkout_return_urls(frontend_origin)
 
+    effective_idempotency_key = idempotency_key or f"idem_appr_{approval_id}_{uuid.uuid4().hex[:8]}"
+
     gateway = PaymentGatewayFactory.get_gateway()
     try:
         # Fulfill the order via PayPal Orders v2 Sandbox
@@ -196,7 +201,7 @@ async def approve(
             amount_cents=amount_cents,
             currency="USD",
             reference_id=f"approved_{approval_id}",
-            idempotency_key=idempotency_key or f"idem_appr_{approval_id}",
+            idempotency_key=effective_idempotency_key,
             return_url=return_url,
             cancel_url=cancel_url,
         )
@@ -243,6 +248,13 @@ async def approve(
             "data": req,
             "intent": paypal_order_data,
         }
+    except PayPalAPIError as e:
+        issue, desc = extract_paypal_issue(e)
+        status_code = e.status_code if 400 <= e.status_code < 500 else 502
+        detail = f"{issue}: {desc}" if issue and desc else (desc or str(e))
+        if e.debug_id:
+            detail = f"{detail} (debug_id={e.debug_id})"
+        raise HTTPException(status_code=status_code, detail=detail) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

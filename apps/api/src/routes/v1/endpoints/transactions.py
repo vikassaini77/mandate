@@ -417,6 +417,16 @@ async def complete_transaction(
                         status_code=409,
                         detail="PayPal order has not been approved by the buyer yet. Complete checkout in PayPal Sandbox first.",
                     ) from e
+                elif issue == "COMPLIANCE_VIOLATION":
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"PayPal Sandbox declined capture for order {order_id} "
+                            f"(COMPLIANCE_VIOLATION, debug_id={e.debug_id}): {desc} "
+                            "Use a US Sandbox Business + US Personal buyer pair in PayPal Developer Dashboard, "
+                            "ensure Negative Testing is Off, and approve a fresh order."
+                        ),
+                    ) from e
                 else:
                     status_code = e.status_code if 400 <= e.status_code < 500 else 502
                     raise HTTPException(
@@ -430,6 +440,16 @@ async def complete_transaction(
                     raise HTTPException(
                         status_code=409,
                         detail="PayPal order has not been approved by the buyer yet. Complete checkout in PayPal Sandbox first.",
+                    ) from e
+                if issue == "COMPLIANCE_VIOLATION":
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"PayPal Sandbox declined capture for order {order_id} "
+                            f"(COMPLIANCE_VIOLATION, debug_id={e.debug_id}): {desc} "
+                            "Use a US Sandbox Business + US Personal buyer pair in PayPal Developer Dashboard, "
+                            "ensure Negative Testing is Off, and approve a fresh order."
+                        ),
                     ) from e
                 status_code = e.status_code if 400 <= e.status_code < 500 else 502
                 raise HTTPException(status_code=status_code, detail=desc or str(e)) from e
